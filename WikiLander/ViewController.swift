@@ -651,7 +651,35 @@ class ViewController: UIViewController, WKNavigationDelegate {
 
                 // Navigate to the link
                 if let url = URL(string: link.href) {
-                    webView.load(URLRequest(url: url))
+                    // Check if this is an anchor link on the current page
+                    let currentURL = webView.url
+                    let isSamePageAnchor = currentURL?.scheme == url.scheme &&
+                                          currentURL?.host == url.host &&
+                                          currentURL?.path == url.path &&
+                                          url.fragment != nil
+
+                    if isSamePageAnchor {
+                        print("📍 Same-page anchor link detected, re-enumerating without reload")
+                        // Track this anchor URL as visited
+                        visitedURLs.insert(link.href)
+
+                        // Speak link text after sound finishes (since title won't change)
+                        let soundDuration = linkHitAudioPlayer?.duration ?? 0
+                        let linkText = link.text
+                        DispatchQueue.main.asyncAfter(deadline: .now() + soundDuration) { [weak self] in
+                            let utterance = AVSpeechUtterance(string: linkText)
+                            utterance.rate = 0.5
+                            self?.speechSynthesizer.speak(utterance)
+                        }
+
+                        // Don't navigate, just re-enumerate links after a delay
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                            self.enumerateLinks()
+                        }
+                    } else {
+                        // Normal navigation to a different page
+                        webView.load(URLRequest(url: url))
+                    }
                 }
 
                 break // Only navigate to first matching link
