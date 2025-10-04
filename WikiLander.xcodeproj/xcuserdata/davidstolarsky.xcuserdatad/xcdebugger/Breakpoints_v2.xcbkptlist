@@ -34,36 +34,6 @@
             endingLineNumber = "222"
             landmarkName = "viewDidLoad()"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "5AC06FE1-E382-4EAC-980A-B7EF1A4194D7 - e33f0aa27488b006"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "WikiLander.ViewController.viewDidLoad() -&gt; ()"
-                  moduleName = "WikiLander.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/davidstolarsky/Development/WikiLander/WikiLander/ViewController.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "222"
-                  endingLineNumber = "222">
-               </Location>
-               <Location
-                  uuid = "5AC06FE1-E382-4EAC-980A-B7EF1A4194D7 - e33f0aa27488b3a1"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "WikiLander.ViewController.viewDidLoad() -&gt; ()"
-                  moduleName = "WikiLander.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/davidstolarsky/Development/WikiLander/WikiLander/ViewController.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "225"
-                  endingLineNumber = "225">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -80,36 +50,6 @@
             endingLineNumber = "226"
             landmarkName = "viewDidLoad()"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "D859ECA6-510D-4714-A515-C6A4869B90DA - e33f0aa27488b382"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "WikiLander.ViewController.viewDidLoad() -&gt; ()"
-                  moduleName = "WikiLander.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/davidstolarsky/Development/WikiLander/WikiLander/ViewController.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "226"
-                  endingLineNumber = "226">
-               </Location>
-               <Location
-                  uuid = "D859ECA6-510D-4714-A515-C6A4869B90DA - e33f0aa27488b3e3"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "WikiLander.ViewController.viewDidLoad() -&gt; ()"
-                  moduleName = "WikiLander.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/davidstolarsky/Development/WikiLander/WikiLander/ViewController.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "227"
-                  endingLineNumber = "227">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -126,36 +66,6 @@
             endingLineNumber = "482"
             landmarkName = "updateScale()"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "0690CA9F-98EB-4AA6-8DEB-C2618F876F04 - 3d63e06c49a939a3"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "WikiLander.ViewController.updateScale() -&gt; ()"
-                  moduleName = "WikiLander.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/davidstolarsky/Development/WikiLander/WikiLander/ViewController.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "482"
-                  endingLineNumber = "482">
-               </Location>
-               <Location
-                  uuid = "0690CA9F-98EB-4AA6-8DEB-C2618F876F04 - 3d63e06c49a939c2"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "WikiLander.ViewController.updateScale() -&gt; ()"
-                  moduleName = "WikiLander.debug.dylib"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/davidstolarsky/Development/WikiLander/WikiLander/ViewController.swift"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "483"
-                  endingLineNumber = "483">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

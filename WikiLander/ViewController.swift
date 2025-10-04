@@ -97,6 +97,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
 
     // Audio
     private var crashAudioPlayer: AVAudioPlayer?
+    private var rocketEngineAudioPlayer: AVAudioPlayer?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -232,6 +233,20 @@ class ViewController: UIViewController, WKNavigationDelegate {
         }
         else {
             print("failed to create soundURL")
+        }
+
+        // Load rocket engine sound
+        if let soundURL = Bundle.main.url(forResource: "Rocket_Engine", withExtension: "wav") {
+            do {
+                rocketEngineAudioPlayer = try AVAudioPlayer(contentsOf: soundURL)
+                rocketEngineAudioPlayer?.numberOfLoops = -1 // Loop indefinitely
+                rocketEngineAudioPlayer?.prepareToPlay()
+            } catch {
+                print("Failed to load rocket engine sound: \(error)")
+            }
+        }
+        else {
+            print("failed to create rocket engine soundURL")
         }
 
         // Start scaling animation at 60Hz
@@ -408,13 +423,22 @@ class ViewController: UIViewController, WKNavigationDelegate {
         }
 
         // Wait 5 seconds before starting animation
-        guard elapsed >= 1.0 else { return }
+        guard elapsed >= 1.0 else {
+            rocketEngineAudioPlayer?.stop()
+            return
+        }
 
         // Wait for links to be enumerated before starting dive
         guard linksEnumerated else {
             // Update lastUpdateTime even when paused
             lastUpdateTime = elapsed
+            rocketEngineAudioPlayer?.stop()
             return
+        }
+
+        // Start rocket engine sound if not already playing
+        if rocketEngineAudioPlayer?.isPlaying == false {
+            rocketEngineAudioPlayer?.play()
         }
 
         // Calculate delta time
@@ -486,7 +510,8 @@ class ViewController: UIViewController, WKNavigationDelegate {
         if !hasIntersection && !links.isEmpty && !isGameOver && !foundContainingLink {
             isGameOver = true
 
-            // Play crash sound
+            // Stop rocket engine and play crash sound
+            rocketEngineAudioPlayer?.stop()
             crashAudioPlayer?.play()
 
             gameOverLabel.isHidden = false
@@ -624,6 +649,9 @@ class ViewController: UIViewController, WKNavigationDelegate {
         debugView.layer.sublayers?.forEach { $0.removeFromSuperlayer() }
         linksEnumerated = false
 
+        // Stop rocket engine sound
+        rocketEngineAudioPlayer?.stop()
+
         // Re-enumerate links with new scale
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             self.enumerateLinks()
@@ -693,6 +721,9 @@ class ViewController: UIViewController, WKNavigationDelegate {
         links.removeAll()
         debugView.layer.sublayers?.forEach { $0.removeFromSuperlayer() }
         linksEnumerated = false
+
+        // Stop rocket engine sound
+        rocketEngineAudioPlayer?.stop()
 
         // Re-enumerate links with restored scale
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
