@@ -534,14 +534,14 @@ class ViewController: UIViewController, WKNavigationDelegate {
                 // Play link hit sound
                 linkHitAudioPlayer?.play()
 
-                // Navigate to the link
-                if let url = URL(string: link.href) {
-                    webView.load(URLRequest(url: url))
-                }
-
                 // Track progress
                 hopCount += 1
                 linkHistory.append(link.text)
+
+                // Clear old links and rectangles immediately
+                links.removeAll()
+                debugView.layer.sublayers?.forEach { $0.removeFromSuperlayer() }
+                linksEnumerated = false
 
                 // Reset accumulated offsets and restart animation
                 accumulatedOffsetX = 0.0
@@ -550,7 +550,15 @@ class ViewController: UIViewController, WKNavigationDelegate {
                 lastUpdateTime = 0.0
                 startTime = CACurrentMediaTime()
                 diveSpeed += 1.0 // Double the dive speed for next page
-                linksEnumerated = false // Wait for new page links to be enumerated
+
+                // Reset transforms
+                webView.transform = .identity
+                debugView.transform = .identity
+
+                // Navigate to the link
+                if let url = URL(string: link.href) {
+                    webView.load(URLRequest(url: url))
+                }
 
                 break // Only navigate to first matching link
             }
