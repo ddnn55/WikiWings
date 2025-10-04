@@ -8,11 +8,56 @@
 import UIKit
 import WebKit
 import CoreMotion
+import AVFoundation
 
 struct LinkInfo {
     let bounds: CGRect
     let href: String
     let text: String
+}
+
+class ExternalDisplayViewController: UIViewController {
+    weak var gameWebView: WKWebView?
+    weak var gameDebugView: UIView?
+    weak var gameHorizontalLine: UIView?
+    weak var gameVerticalLine: UIView?
+    weak var gameOverLabel: UILabel?
+    weak var gameRestartButton: UIButton?
+    weak var gameProgressLabel: UILabel?
+
+    private var hasLaidOut = false
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .white
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+
+        // Only do initial layout once to avoid interfering with transforms
+        guard !hasLaidOut else { return }
+        hasLaidOut = true
+
+        // Layout all game views to fill the external display
+        gameWebView?.frame = view.bounds
+        gameDebugView?.frame = view.bounds
+
+        // Layout game over UI
+        let centerX = view.bounds.midX
+        let centerY = view.bounds.midY
+        gameOverLabel?.frame = CGRect(x: centerX - 200, y: centerY - 150, width: 400, height: 60)
+        gameRestartButton?.frame = CGRect(x: centerX - 100, y: centerY + 80, width: 200, height: 50)
+        gameProgressLabel?.frame = CGRect(x: 20, y: centerY - 70, width: view.bounds.width - 40, height: 140)
+    }
+
+    override var prefersStatusBarHidden: Bool {
+        return true
+    }
+
+    override var prefersHomeIndicatorAutoHidden: Bool {
+        return true
+    }
 }
 
 class ViewController: UIViewController, WKNavigationDelegate {
@@ -44,6 +89,14 @@ class ViewController: UIViewController, WKNavigationDelegate {
     private let originalURL = "https://en.wikipedia.org/wiki/Main_Page"
     private var hopCount = 0
     private var linkHistory: [String] = []
+
+    // External display properties
+    private var externalWindow: UIWindow?
+    private var yolkLabel: UILabel?
+    private var externalViewController: ExternalDisplayViewController?
+
+    // Audio
+    private var crashAudioPlayer: AVAudioPlayer?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -156,6 +209,20 @@ class ViewController: UIViewController, WKNavigationDelegate {
             motionManager.startDeviceMotionUpdates()
         }
 
+        // Set up external display observers
+        NotificationCenter.default.addObserver(self, selector: #selector(sceneWillConnect), name: UIScene.willConnectNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(sceneDidDisconnect), name: UIScene.didDisconnectNotification, object: nil)
+
+        // Load crash sound
+        if let soundURL = Bundle.main.url(forResource: "Crash", withExtension: "wav") {
+            do {
+                crashAudioPlayer = try AVAudioPlayer(contentsOf: soundURL)
+                crashAudioPlayer?.prepareToPlay()
+            } catch {
+                print("Failed to load crash sound: \(error)")
+            }
+        }
+
         // Start scaling animation at 60Hz
         displayLink = CADisplayLink(target: self, selector: #selector(updateScale))
         displayLink.add(to: .main, forMode: .common)
@@ -164,6 +231,12 @@ class ViewController: UIViewController, WKNavigationDelegate {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+
+        // Update Yolk label frame if it exists
+        yolkLabel?.frame = view.bounds
+
+        // Only layout game UI if it's on the main screen
+        guard externalWindow == nil else { return }
 
         // Layout game over UI
         let centerX = view.bounds.midX
@@ -176,7 +249,8 @@ class ViewController: UIViewController, WKNavigationDelegate {
 
     private func enumerateLinks() {
         let zoomScale = webView.scrollView.zoomScale
-        let leftSafeArea = view.safeAreaInsets.left
+        let containerView = externalViewController?.view ?? view!
+        let leftSafeArea = containerView.safeAreaInsets.left
 
         let javascript = """
         (function() {
@@ -297,12 +371,13 @@ class ViewController: UIViewController, WKNavigationDelegate {
         }
 
         // Update control indicator lines
-        let centerX = view.bounds.width / 2
-        let centerY = view.bounds.height / 2
+        let displayView = externalViewController?.view ?? view!
+        let centerX = displayView.bounds.width / 2
+        let centerY = displayView.bounds.height / 2
         let lineThickness: CGFloat = 3
 
         // Horizontal line showing X control
-        let horizontalLineLength = CGFloat(controlX) * (view.bounds.width / 2)
+        let horizontalLineLength = CGFloat(controlX) * (displayView.bounds.width / 2)
         if controlX >= 0 {
             horizontalLine.frame = CGRect(x: centerX, y: centerY - lineThickness/2,
                                          width: horizontalLineLength, height: lineThickness)
@@ -312,7 +387,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
         }
 
         // Vertical line showing Y control
-        let verticalLineLength = CGFloat(controlY) * (view.bounds.height / 2)
+        let verticalLineLength = CGFloat(controlY) * (displayView.bounds.height / 2)
         if controlY >= 0 {
             verticalLine.frame = CGRect(x: centerX - lineThickness/2, y: centerY,
                                        width: lineThickness, height: verticalLineLength)
@@ -348,10 +423,11 @@ class ViewController: UIViewController, WKNavigationDelegate {
        debugView.transform = transform
 
         // Check if any link bounds (with transform applied) completely contain the screen bounds
-        let screenBounds = view.bounds
+        // Use external display bounds if active, otherwise main view bounds
+        let screenBounds = displayView.bounds
 
         // Convert screen bounds to debugView's coordinate space (which has the same transform as webView)
-        let screenBoundsInDebugView = view.convert(screenBounds, to: debugView)
+        let screenBoundsInDebugView = displayView.convert(screenBounds, to: debugView)
 
         // Check for intersections
         var hasIntersection = false
@@ -398,6 +474,10 @@ class ViewController: UIViewController, WKNavigationDelegate {
         // Check for game over condition: no links intersecting screen and we have links enumerated
         if !hasIntersection && !links.isEmpty && !isGameOver && !foundContainingLink {
             isGameOver = true
+
+            // Play crash sound
+            crashAudioPlayer?.play()
+
             gameOverLabel.isHidden = false
             restartButton.isHidden = false
             progressLabel.isHidden = false
@@ -447,6 +527,175 @@ class ViewController: UIViewController, WKNavigationDelegate {
 
         // Resume animation
         displayLink.isPaused = false
+    }
+
+    // MARK: - External Display
+
+    @objc private func sceneWillConnect(_ notification: Notification) {
+        guard let scene = notification.object as? UIWindowScene else { return }
+
+        // Check if this is an external display scene
+        guard scene.screen != UIScreen.main else { return }
+
+        setupExternalDisplay(scene)
+    }
+
+    @objc private func sceneDidDisconnect(_ notification: Notification) {
+        guard let scene = notification.object as? UIWindowScene else { return }
+
+        // Check if this was an external display scene
+        guard scene.screen != UIScreen.main else { return }
+
+        teardownExternalDisplay()
+    }
+
+    private func setupExternalDisplay(_ scene: UIWindowScene) {
+        // Create external window for the scene
+        externalWindow = UIWindow(windowScene: scene)
+
+        // Create a custom view controller for the external display
+        let externalVC = ExternalDisplayViewController()
+        externalViewController = externalVC
+        externalWindow?.rootViewController = externalVC
+        externalWindow?.isHidden = false
+
+        // Store references to views for layout
+        externalVC.gameWebView = webView
+        externalVC.gameDebugView = debugView
+        externalVC.gameHorizontalLine = horizontalLine
+        externalVC.gameVerticalLine = verticalLine
+        externalVC.gameOverLabel = gameOverLabel
+        externalVC.gameRestartButton = restartButton
+        externalVC.gameProgressLabel = progressLabel
+
+        // Move visual game UI to external display (keep touchOverlay on phone)
+        webView.removeFromSuperview()
+        debugView.removeFromSuperview()
+        horizontalLine.removeFromSuperview()
+        verticalLine.removeFromSuperview()
+        gameOverLabel.removeFromSuperview()
+        restartButton.removeFromSuperview()
+        progressLabel.removeFromSuperview()
+
+        externalVC.view.addSubview(webView)
+        externalVC.view.addSubview(debugView)
+        externalVC.view.addSubview(horizontalLine)
+        externalVC.view.addSubview(verticalLine)
+        externalVC.view.addSubview(gameOverLabel)
+        externalVC.view.addSubview(restartButton)
+        externalVC.view.addSubview(progressLabel)
+
+        // Trigger layout
+        externalVC.view.setNeedsLayout()
+        externalVC.view.layoutIfNeeded()
+
+        // Recalculate webView zoom scale for external display
+        let externalScreenWidth = scene.screen.bounds.width
+        let externalScale = externalScreenWidth / 1920.0
+        webView.scrollView.minimumZoomScale = externalScale
+        webView.scrollView.maximumZoomScale = externalScale
+        webView.scrollView.zoomScale = externalScale
+
+        // Update contentScaleFactor for external screen
+        webView.contentScaleFactor = scene.screen.scale * 4
+
+        // Reset transforms and animation state when moving to external display
+        webView.transform = .identity
+        debugView.transform = .identity
+        accumulatedOffsetX = 0.0
+        accumulatedOffsetY = 0.0
+        accumulatedScale = 1.0
+        lastUpdateTime = 0.0
+        startTime = CACurrentMediaTime()
+
+        // Clear old links and rectangles immediately
+        links.removeAll()
+        debugView.layer.sublayers?.forEach { $0.removeFromSuperlayer() }
+        linksEnumerated = false
+
+        // Re-enumerate links with new scale
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            self.enumerateLinks()
+        }
+
+        // Create "Yolk" label for main screen
+        yolkLabel = UILabel(frame: view.bounds)
+        yolkLabel?.text = "Yolk"
+        yolkLabel?.textAlignment = .center
+        yolkLabel?.font = UIFont.systemFont(ofSize: 48)
+        yolkLabel?.textColor = .white
+        yolkLabel?.backgroundColor = .black
+        yolkLabel?.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        yolkLabel?.isUserInteractionEnabled = false
+        view.addSubview(yolkLabel!)
+
+        // Keep touchOverlay on top so turbo touch still works
+        view.bringSubviewToFront(touchOverlay)
+    }
+
+    private func teardownExternalDisplay() {
+        guard let externalVC = externalWindow?.rootViewController else { return }
+
+        // Move visual game UI back to main view (touchOverlay stayed on phone)
+        webView.removeFromSuperview()
+        debugView.removeFromSuperview()
+        horizontalLine.removeFromSuperview()
+        verticalLine.removeFromSuperview()
+        gameOverLabel.removeFromSuperview()
+        restartButton.removeFromSuperview()
+        progressLabel.removeFromSuperview()
+
+        view.addSubview(webView)
+        view.addSubview(touchOverlay)
+        view.addSubview(debugView)
+        view.addSubview(horizontalLine)
+        view.addSubview(verticalLine)
+        view.addSubview(gameOverLabel)
+        view.addSubview(restartButton)
+        view.addSubview(progressLabel)
+
+        // Update frames for main display
+        webView.frame = view.bounds
+        touchOverlay.frame = view.bounds
+        debugView.frame = view.bounds
+
+        // Restore webView zoom scale for main display
+        let mainScreenWidth = UIScreen.main.bounds.width
+        let mainScale = mainScreenWidth / 1920.0
+        webView.scrollView.minimumZoomScale = mainScale
+        webView.scrollView.maximumZoomScale = mainScale
+        webView.scrollView.zoomScale = mainScale
+
+        // Update contentScaleFactor for main screen
+        webView.contentScaleFactor = UIScreen.main.scale * 4
+
+        // Reset transforms and animation state when moving back to main display
+        webView.transform = .identity
+        debugView.transform = .identity
+        accumulatedOffsetX = 0.0
+        accumulatedOffsetY = 0.0
+        accumulatedScale = 1.0
+        lastUpdateTime = 0.0
+        startTime = CACurrentMediaTime()
+
+        // Clear old links and rectangles immediately
+        links.removeAll()
+        debugView.layer.sublayers?.forEach { $0.removeFromSuperlayer() }
+        linksEnumerated = false
+
+        // Re-enumerate links with restored scale
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            self.enumerateLinks()
+        }
+
+        // Remove "Yolk" label
+        yolkLabel?.removeFromSuperview()
+        yolkLabel = nil
+
+        // Clean up external window and view controller
+        externalWindow?.isHidden = true
+        externalWindow = nil
+        externalViewController = nil
     }
 
     override var prefersStatusBarHidden: Bool {
