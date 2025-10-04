@@ -92,7 +92,7 @@ class ViewController: UIViewController {
             // Roll = pitching forward/back (Y control)
             // Pitch: -π/2 (left edge down) = -1.0, π/2 (right edge down) = 1.0
             // Roll: -π/2 (top edge away) = -1.0, π/2 (top edge toward) = 1.0
-            controlX = max(-1.0, min(1.0, pitch / (Double.pi / 2)))
+            controlX = 0.0 - max(-1.0, min(1.0, pitch / (Double.pi / 2)))
             controlY = max(-1.0, min(1.0, roll / (Double.pi / 2)))
         }
 
