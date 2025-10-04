@@ -27,6 +27,11 @@ class ViewController: UIViewController, WKNavigationDelegate {
     private var accumulatedOffsetY: Double = 0.0
     private let controlPower: Double = 4.0
     private var diveSpeed: Double = 1.0
+    private var accumulatedScale: Double = 1.0
+    private var lastUpdateTime: CFTimeInterval = 0
+    private let scalePower: Double = 1.2
+    private var turboPower: Double = 1.0
+    private var touchOverlay: UIView!
     private var horizontalLine: UIView!
     private var verticalLine: UIView!
     private var debugView: UIView!
@@ -66,7 +71,20 @@ class ViewController: UIViewController, WKNavigationDelegate {
         webView.layer.shouldRasterize = false
         webView.contentScaleFactor = UIScreen.main.scale * 4
 
+        // Disable user interaction to prevent text selection, etc.
+        webView.isUserInteractionEnabled = false
+
         view.addSubview(webView)
+
+        // Create touch overlay for turbo boost
+        touchOverlay = UIView(frame: view.bounds)
+        touchOverlay.backgroundColor = .clear
+        view.addSubview(touchOverlay)
+
+        // Add touch gesture recognizers
+        let touchDownGesture = UILongPressGestureRecognizer(target: self, action: #selector(handleTouch(_:)))
+        touchDownGesture.minimumPressDuration = 0
+        touchOverlay.addGestureRecognizer(touchDownGesture)
 
         // Create debug view for link visualization
         debugView = UIView(frame: view.bounds)
@@ -234,6 +252,17 @@ class ViewController: UIViewController, WKNavigationDelegate {
         }
     }
 
+    @objc private func handleTouch(_ gesture: UILongPressGestureRecognizer) {
+        switch gesture.state {
+        case .began:
+            turboPower = 2.0
+        case .ended, .cancelled, .failed:
+            turboPower = 1.0
+        default:
+            break
+        }
+    }
+
     // MARK: - WKNavigationDelegate
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -296,19 +325,25 @@ class ViewController: UIViewController, WKNavigationDelegate {
         guard elapsed >= 1.0 else { return }
 
         // Wait for links to be enumerated before starting dive
-        guard linksEnumerated else { return }
+        guard linksEnumerated else {
+            // Update lastUpdateTime even when paused
+            lastUpdateTime = elapsed
+            return
+        }
 
-        let animationTime = elapsed - 1.0
+        // Calculate delta time
+        let deltaTime = lastUpdateTime > 0 ? elapsed - lastUpdateTime : 0
+        lastUpdateTime = elapsed
 
-        // Double every 3 seconds (slower animation), affected by dive speed
-        let scaleFactor = pow(2.0, (animationTime / 6.0) * diveSpeed)
+        // Update accumulated scale exponentially (with turbo boost when touching)
+        accumulatedScale *= pow(scalePower, deltaTime * diveSpeed * turboPower)
 
         // Accumulate offsets with inverse scale proportionality
-        accumulatedOffsetX -= (controlX * controlPower) / scaleFactor
-        accumulatedOffsetY += (controlY * controlPower) / scaleFactor
+        accumulatedOffsetX -= (controlX * controlPower) / accumulatedScale
+        accumulatedOffsetY += (controlY * controlPower) / accumulatedScale
 
         // Use transform instead of bounds to scale everything proportionally
-        let transform = CGAffineTransform(scaleX: scaleFactor, y: scaleFactor).translatedBy(x: accumulatedOffsetX, y: accumulatedOffsetY)
+        let transform = CGAffineTransform(scaleX: accumulatedScale, y: accumulatedScale).translatedBy(x: accumulatedOffsetX, y: accumulatedOffsetY)
        webView.transform = transform
        debugView.transform = transform
 
@@ -350,6 +385,8 @@ class ViewController: UIViewController, WKNavigationDelegate {
                 // Reset accumulated offsets and restart animation
                 accumulatedOffsetX = 0.0
                 accumulatedOffsetY = 0.0
+                accumulatedScale = 1.0
+                lastUpdateTime = 0.0
                 startTime = CACurrentMediaTime()
                 diveSpeed += 1.0 // Double the dive speed for next page
                 linksEnumerated = false // Wait for new page links to be enumerated
@@ -364,6 +401,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
             gameOverLabel.isHidden = false
             restartButton.isHidden = false
             progressLabel.isHidden = false
+            touchOverlay.isUserInteractionEnabled = false
 
             // Build progress text
             let hopText = "Survived \(hopCount) hop\(hopCount == 1 ? "" : "s")"
@@ -380,10 +418,14 @@ class ViewController: UIViewController, WKNavigationDelegate {
         gameOverLabel.isHidden = true
         restartButton.isHidden = true
         progressLabel.isHidden = true
+        touchOverlay.isUserInteractionEnabled = true
+        turboPower = 1.0
 
         // Reset game variables
         accumulatedOffsetX = 0.0
         accumulatedOffsetY = 0.0
+        accumulatedScale = 1.0
+        lastUpdateTime = 0.0
         diveSpeed = 1.0
         startTime = CACurrentMediaTime()
         links.removeAll()
