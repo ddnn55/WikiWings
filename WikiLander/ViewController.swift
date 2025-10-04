@@ -271,6 +271,18 @@ class ViewController: UIViewController {
 
             if link.bounds.contains(screenBoundsInDebugView) {
                 print("🎯 Link \(index) contains screen: '\(link.text)' -> \(link.href)")
+
+                // Navigate to the link
+                if let url = URL(string: link.href) {
+                    webView.load(URLRequest(url: url))
+                }
+
+                // Reset accumulated offsets and restart animation
+                accumulatedOffsetX = 0.0
+                accumulatedOffsetY = 0.0
+                startTime = CACurrentMediaTime()
+
+                break // Only navigate to first matching link
             }
         }
     }
