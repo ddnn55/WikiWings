@@ -15,7 +15,7 @@ struct LinkInfo {
     let text: String
 }
 
-class ViewController: UIViewController {
+class ViewController: UIViewController, WKNavigationDelegate {
 
     private var webView: WKWebView!
     private var displayLink: CADisplayLink!
@@ -31,11 +31,14 @@ class ViewController: UIViewController {
     private var verticalLine: UIView!
     private var debugView: UIView!
     private var links: [LinkInfo] = []
-    private var lastEnumerationTime: CFTimeInterval = 0
+    private var linksEnumerated = false
     private var isGameOver = false
     private var gameOverLabel: UILabel!
     private var restartButton: UIButton!
+    private var progressLabel: UILabel!
     private let originalURL = "https://en.wikipedia.org/wiki/Main_Page"
+    private var hopCount = 0
+    private var linkHistory: [String] = []
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -45,6 +48,7 @@ class ViewController: UIViewController {
         configuration.applicationNameForUserAgent = "Version/15.0 Safari/605.1.15"
 
         webView = WKWebView(frame: view.bounds, configuration: configuration)
+        webView.navigationDelegate = self
 
         // Enable web inspector
         if #available(iOS 16.4, *) {
@@ -117,6 +121,16 @@ class ViewController: UIViewController {
         restartButton.addTarget(self, action: #selector(restartGame), for: .touchUpInside)
         view.addSubview(restartButton)
 
+        progressLabel = UILabel()
+        progressLabel.font = UIFont.systemFont(ofSize: 14)
+        progressLabel.textColor = .white
+        progressLabel.numberOfLines = 0
+        progressLabel.textAlignment = .center
+        progressLabel.isHidden = true
+        progressLabel.layer.zPosition = 2000
+        progressLabel.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+        view.addSubview(progressLabel)
+
         // Start motion manager
         motionManager = CMMotionManager()
         if motionManager.isDeviceMotionAvailable {
@@ -137,8 +151,9 @@ class ViewController: UIViewController {
         let centerX = view.bounds.midX
         let centerY = view.bounds.midY
 
-        gameOverLabel.frame = CGRect(x: centerX - 200, y: centerY - 100, width: 400, height: 60)
-        restartButton.frame = CGRect(x: centerX - 100, y: centerY + 20, width: 200, height: 50)
+        gameOverLabel.frame = CGRect(x: centerX - 200, y: centerY - 150, width: 400, height: 60)
+        restartButton.frame = CGRect(x: centerX - 100, y: centerY + 80, width: 200, height: 50)
+        progressLabel.frame = CGRect(x: 20, y: centerY - 70, width: view.bounds.width - 40, height: 140)
     }
 
     private func enumerateLinks() {
@@ -212,7 +227,19 @@ class ViewController: UIViewController {
                 // Print maximum x+width value
                 let maxXPlusWidth = self.links.map { $0.bounds.maxX }.max() ?? 0
                 // print("Maximum (x+width) value: \(maxXPlusWidth)")
+
+                // Mark links as enumerated
+                self.linksEnumerated = true
             }
+        }
+    }
+
+    // MARK: - WKNavigationDelegate
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        // Enumerate links once when page finishes loading
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            self.enumerateLinks()
         }
     }
 
@@ -265,14 +292,11 @@ class ViewController: UIViewController {
                                        width: lineThickness, height: -verticalLineLength)
         }
 
-        // Enumerate links once per second after page loads
-        if elapsed >= 3.0 && elapsed - lastEnumerationTime >= 1.0 {
-            lastEnumerationTime = elapsed
-            enumerateLinks()
-        }
-
         // Wait 5 seconds before starting animation
         guard elapsed >= 1.0 else { return }
+
+        // Wait for links to be enumerated before starting dive
+        guard linksEnumerated else { return }
 
         let animationTime = elapsed - 1.0
 
@@ -319,12 +343,16 @@ class ViewController: UIViewController {
                     webView.load(URLRequest(url: url))
                 }
 
+                // Track progress
+                hopCount += 1
+                linkHistory.append(link.text)
+
                 // Reset accumulated offsets and restart animation
                 accumulatedOffsetX = 0.0
                 accumulatedOffsetY = 0.0
                 startTime = CACurrentMediaTime()
-                lastEnumerationTime = 0.0 // Force re-enumeration of links on new page
                 diveSpeed += 1.0 // Double the dive speed for next page
+                linksEnumerated = false // Wait for new page links to be enumerated
 
                 break // Only navigate to first matching link
             }
@@ -335,6 +363,13 @@ class ViewController: UIViewController {
             isGameOver = true
             gameOverLabel.isHidden = false
             restartButton.isHidden = false
+            progressLabel.isHidden = false
+
+            // Build progress text
+            let hopText = "Survived \(hopCount) hop\(hopCount == 1 ? "" : "s")"
+            let pathText = linkHistory.joined(separator: " ➡️ ")
+            progressLabel.text = "\(hopText)\n\n\(pathText)"
+
             displayLink.isPaused = true
         }
     }
@@ -344,14 +379,17 @@ class ViewController: UIViewController {
         isGameOver = false
         gameOverLabel.isHidden = true
         restartButton.isHidden = true
+        progressLabel.isHidden = true
 
         // Reset game variables
         accumulatedOffsetX = 0.0
         accumulatedOffsetY = 0.0
         diveSpeed = 1.0
         startTime = CACurrentMediaTime()
-        lastEnumerationTime = 0.0
         links.removeAll()
+        linksEnumerated = false
+        hopCount = 0
+        linkHistory.removeAll()
 
         // Clear debug view
         debugView.layer.sublayers?.forEach { $0.removeFromSuperlayer() }
