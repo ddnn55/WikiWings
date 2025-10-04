@@ -432,8 +432,12 @@ class ViewController: UIViewController, WKNavigationDelegate {
         switch gesture.state {
         case .began:
             turboPower = 2.0
+            view.backgroundColor = .red
+            yolkImageView?.backgroundColor = .red
         case .ended, .cancelled, .failed:
             turboPower = 1.0
+            view.backgroundColor = .black
+            yolkImageView?.backgroundColor = .black
         default:
             break
         }
