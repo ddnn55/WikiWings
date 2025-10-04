@@ -70,7 +70,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
     private var controlY: Double = 0.0
     private var accumulatedOffsetX: Double = 0.0
     private var accumulatedOffsetY: Double = 0.0
-    private let controlPower: Double = 4.0
+    private let controlPower: Double = 8.0
     private var diveSpeed: Double = 1.0
     private var accumulatedScale: Double = 1.0
     private var lastUpdateTime: CFTimeInterval = 0
