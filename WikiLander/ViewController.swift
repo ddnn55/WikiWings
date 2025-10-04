@@ -92,6 +92,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
     private let originalURL = "https://en.wikipedia.org/wiki/Main_Page"
     private var hopCount = 0
     private var linkHistory: [String] = []
+    private var visitedURLs: Set<String> = []
 
     // External display properties
     private var externalWindow: UIWindow?
@@ -399,6 +400,22 @@ class ViewController: UIViewController, WKNavigationDelegate {
                         textLayer.truncationMode = .end
                         self.debugView.layer.addSublayer(textLayer)
                     }
+
+                    // Draw X over visited links (always show, regardless of showDebugRectangles)
+                    if self.visitedURLs.contains(href) {
+                        let xPath = UIBezierPath()
+                        // Draw X from corner to corner
+                        xPath.move(to: CGPoint(x: rect.minX, y: rect.minY))
+                        xPath.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+                        xPath.move(to: CGPoint(x: rect.maxX, y: rect.minY))
+                        xPath.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+
+                        let xLayer = CAShapeLayer()
+                        xLayer.path = xPath.cgPath
+                        xLayer.strokeColor = UIColor.red.cgColor
+                        xLayer.lineWidth = 4.0
+                        self.debugView.layer.addSublayer(xLayer)
+                    }
                 }
 
                 // Print maximum x+width value
@@ -430,6 +447,11 @@ class ViewController: UIViewController, WKNavigationDelegate {
 
         // Only enumerate links if game has started
         guard gameStarted else { return }
+
+        // Track visited URL
+        if let currentURL = webView.url?.absoluteString {
+            visitedURLs.insert(currentURL)
+        }
 
         // Speak page title after link hit sound finishes (but not for original URL)
         if webView.url?.absoluteString != originalURL && hopCount > 0 {
@@ -576,12 +598,18 @@ class ViewController: UIViewController, WKNavigationDelegate {
 //                 print("screen (debugView space): \(screenBoundsInDebugView)")
 //            }
 
-            // Check if link intersects screen
-            if link.bounds.intersects(screenBoundsInDebugView) {
+            // Check if link intersects screen (skip visited links for intersection check)
+            if link.bounds.intersects(screenBoundsInDebugView) && !visitedURLs.contains(link.href) {
                 hasIntersection = true
             }
 
             if link.bounds.contains(screenBoundsInDebugView) {
+                // Skip visited links
+                if visitedURLs.contains(link.href) {
+                    print("⏭️ Skipping visited link: '\(link.text)' -> \(link.href)")
+                    continue
+                }
+
                 foundContainingLink = true
                 print("🎯 Link \(index) contains screen: '\(link.text)' -> \(link.href)")
 
@@ -672,6 +700,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
         linksEnumerated = false
         hopCount = 0
         linkHistory.removeAll()
+        visitedURLs.removeAll()
 
         // Clear debug view
         debugView.layer.sublayers?.forEach { $0.removeFromSuperlayer() }
