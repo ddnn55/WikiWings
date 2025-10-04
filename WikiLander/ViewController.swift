@@ -96,7 +96,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
 
     // External display properties
     private var externalWindow: UIWindow?
-    private var yolkLabel: UILabel?
+    private var yolkImageView: UIImageView?
     private var externalViewController: ExternalDisplayViewController?
 
     // Audio
@@ -302,8 +302,8 @@ class ViewController: UIViewController, WKNavigationDelegate {
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
 
-        // Update Yolk label frame if it exists
-        yolkLabel?.frame = view.bounds
+        // Update Yolk image view frame if it exists
+        yolkImageView?.frame = view.bounds
 
         // Layout restart and start screen (always on phone)
         restartHostingController.view.frame = view.bounds
@@ -444,6 +444,18 @@ class ViewController: UIViewController, WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         // Reset scroll position
         webView.scrollView.contentOffset = .zero
+
+        // Activate OS theme radio button
+        let themeScript = """
+        (function() {
+            const radioButton = document.querySelector('#skin-client-pref-skin-theme-value-os');
+            if (radioButton) {
+                radioButton.checked = true;
+                radioButton.click();
+            }
+        })();
+        """
+        webView.evaluateJavaScript(themeScript, completionHandler: nil)
 
         // Only enumerate links if game has started
         guard gameStarted else { return }
@@ -824,16 +836,14 @@ class ViewController: UIViewController, WKNavigationDelegate {
         restartHostingController.didMove(toParent: self)
         restartHostingController.view.frame = view.bounds
 
-        // Create "Yolk" label for main screen
-        yolkLabel = UILabel(frame: view.bounds)
-        yolkLabel?.text = "Yolk"
-        yolkLabel?.textAlignment = .center
-        yolkLabel?.font = UIFont.systemFont(ofSize: 48)
-        yolkLabel?.textColor = .white
-        yolkLabel?.backgroundColor = .black
-        yolkLabel?.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        yolkLabel?.isUserInteractionEnabled = false
-        view.addSubview(yolkLabel!)
+        // Create Yolk image view for main screen
+        yolkImageView = UIImageView(frame: view.bounds)
+        yolkImageView?.image = UIImage(named: "Gemini_Generated_Image_ox03eqox03eqox03")
+        yolkImageView?.contentMode = .scaleAspectFit
+        yolkImageView?.backgroundColor = .black
+        yolkImageView?.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        yolkImageView?.isUserInteractionEnabled = false
+        view.addSubview(yolkImageView!)
 
         // Keep touchOverlay, restart button, and start screen on top
         view.bringSubviewToFront(touchOverlay)
@@ -906,9 +916,9 @@ class ViewController: UIViewController, WKNavigationDelegate {
             self.enumerateLinks()
         }
 
-        // Remove "Yolk" label
-        yolkLabel?.removeFromSuperview()
-        yolkLabel = nil
+        // Remove Yolk image view
+        yolkImageView?.removeFromSuperview()
+        yolkImageView = nil
 
         // Ensure restart button stays on top
         view.bringSubviewToFront(restartHostingController.view)
