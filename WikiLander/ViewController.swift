@@ -21,9 +21,6 @@ class ExternalDisplayViewController: UIViewController {
     weak var gameDebugView: UIView?
     weak var gameHorizontalLine: UIView?
     weak var gameVerticalLine: UIView?
-    weak var gameOverLabel: UILabel?
-    weak var gameRestartButton: UIButton?
-    weak var gameProgressLabel: UILabel?
 
     private var hasLaidOut = false
 
@@ -42,13 +39,6 @@ class ExternalDisplayViewController: UIViewController {
         // Layout all game views to fill the external display
         gameWebView?.frame = view.bounds
         gameDebugView?.frame = view.bounds
-
-        // Layout game over UI
-        let centerX = view.bounds.midX
-        let centerY = view.bounds.midY
-        gameOverLabel?.frame = CGRect(x: centerX - 200, y: centerY - 150, width: 400, height: 60)
-        gameRestartButton?.frame = CGRect(x: centerX - 100, y: centerY + 80, width: 200, height: 50)
-        gameProgressLabel?.frame = CGRect(x: 20, y: centerY - 70, width: view.bounds.width - 40, height: 140)
     }
 
     override var prefersStatusBarHidden: Bool {
@@ -658,26 +648,17 @@ class ViewController: UIViewController, WKNavigationDelegate {
         externalVC.gameDebugView = debugView
         externalVC.gameHorizontalLine = horizontalLine
         externalVC.gameVerticalLine = verticalLine
-        externalVC.gameOverLabel = gameOverLabel
-        externalVC.gameRestartButton = restartButton
-        externalVC.gameProgressLabel = progressLabel
 
-        // Move visual game UI to external display (keep touchOverlay on phone)
+        // Move visual game UI to external display (keep touchOverlay and game over UI on phone)
         webView.removeFromSuperview()
         debugView.removeFromSuperview()
         horizontalLine.removeFromSuperview()
         verticalLine.removeFromSuperview()
-        gameOverLabel.removeFromSuperview()
-        restartButton.removeFromSuperview()
-        progressLabel.removeFromSuperview()
 
         externalVC.view.addSubview(webView)
         externalVC.view.addSubview(debugView)
         externalVC.view.addSubview(horizontalLine)
         externalVC.view.addSubview(verticalLine)
-        externalVC.view.addSubview(gameOverLabel)
-        externalVC.view.addSubview(restartButton)
-        externalVC.view.addSubview(progressLabel)
 
         // Trigger layout
         externalVC.view.setNeedsLayout()
@@ -726,21 +707,21 @@ class ViewController: UIViewController, WKNavigationDelegate {
         yolkLabel?.isUserInteractionEnabled = false
         view.addSubview(yolkLabel!)
 
-        // Keep touchOverlay on top so turbo touch still works
+        // Keep touchOverlay and game over UI on top
         view.bringSubviewToFront(touchOverlay)
+        view.bringSubviewToFront(gameOverLabel)
+        view.bringSubviewToFront(restartButton)
+        view.bringSubviewToFront(progressLabel)
     }
 
     private func teardownExternalDisplay() {
         guard let externalVC = externalWindow?.rootViewController else { return }
 
-        // Move visual game UI back to main view (touchOverlay stayed on phone)
+        // Move visual game UI back to main view (touchOverlay and game over UI stayed on phone)
         webView.removeFromSuperview()
         debugView.removeFromSuperview()
         horizontalLine.removeFromSuperview()
         verticalLine.removeFromSuperview()
-        gameOverLabel.removeFromSuperview()
-        restartButton.removeFromSuperview()
-        progressLabel.removeFromSuperview()
 
         view.addSubview(webView)
         view.addSubview(touchOverlay)
