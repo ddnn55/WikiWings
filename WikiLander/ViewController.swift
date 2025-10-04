@@ -213,6 +213,14 @@ class ViewController: UIViewController, WKNavigationDelegate {
         NotificationCenter.default.addObserver(self, selector: #selector(sceneWillConnect), name: UIScene.willConnectNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(sceneDidDisconnect), name: UIScene.didDisconnectNotification, object: nil)
 
+        // Configure audio session
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            print("Failed to configure audio session: \(error)")
+        }
+
         // Load crash sound
         if let soundURL = Bundle.main.url(forResource: "Crash", withExtension: "wav") {
             do {
@@ -221,6 +229,9 @@ class ViewController: UIViewController, WKNavigationDelegate {
             } catch {
                 print("Failed to load crash sound: \(error)")
             }
+        }
+        else {
+            print("failed to create soundURL")
         }
 
         // Start scaling animation at 60Hz
