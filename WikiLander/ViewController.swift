@@ -62,6 +62,8 @@ class ExternalDisplayViewController: UIViewController {
 
 class ViewController: UIViewController, WKNavigationDelegate {
 
+    private let showDebugRectangles = false
+
     private var webView: WKWebView!
     private var displayLink: CADisplayLink!
     private var startTime: CFTimeInterval = 0
@@ -402,24 +404,26 @@ class ViewController: UIViewController, WKNavigationDelegate {
                     let linkInfo = LinkInfo(bounds: rect, href: href, text: text)
                     self.links.append(linkInfo)
 
-                    let shapeLayer = CAShapeLayer()
-                    shapeLayer.path = UIBezierPath(rect: rect).cgPath
-                    shapeLayer.strokeColor = UIColor.red.cgColor
-                    shapeLayer.fillColor = UIColor.clear.cgColor
-                    shapeLayer.lineWidth = 2.0
-                    self.debugView.layer.addSublayer(shapeLayer)
+                    if self.showDebugRectangles {
+                        let shapeLayer = CAShapeLayer()
+                        shapeLayer.path = UIBezierPath(rect: rect).cgPath
+                        shapeLayer.strokeColor = UIColor.red.cgColor
+                        shapeLayer.fillColor = UIColor.clear.cgColor
+                        shapeLayer.lineWidth = 2.0
+                        self.debugView.layer.addSublayer(shapeLayer)
 
-                    // Add text label
-                    let textLayer = CATextLayer()
-                    textLayer.string = text
-                    textLayer.fontSize = 72
-                    textLayer.foregroundColor = UIColor.red.cgColor
-                    textLayer.backgroundColor = UIColor.white.withAlphaComponent(0.5).cgColor
-                    textLayer.contentsScale = UIScreen.main.scale
-                    textLayer.frame = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: 72)
-                    textLayer.alignmentMode = .left
-                    textLayer.truncationMode = .end
-                    self.debugView.layer.addSublayer(textLayer)
+                        // Add text label
+                        let textLayer = CATextLayer()
+                        textLayer.string = text
+                        textLayer.fontSize = 72
+                        textLayer.foregroundColor = UIColor.red.cgColor
+                        textLayer.backgroundColor = UIColor.white.withAlphaComponent(0.5).cgColor
+                        textLayer.contentsScale = UIScreen.main.scale
+                        textLayer.frame = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: 72)
+                        textLayer.alignmentMode = .left
+                        textLayer.truncationMode = .end
+                        self.debugView.layer.addSublayer(textLayer)
+                    }
                 }
 
                 // Print maximum x+width value
