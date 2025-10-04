@@ -21,6 +21,8 @@ class ExternalDisplayViewController: UIViewController {
     weak var gameDebugView: UIView?
     weak var gameHorizontalLine: UIView?
     weak var gameVerticalLine: UIView?
+    weak var gameHorizontalLabel: UILabel?
+    weak var gameVerticalLabel: UILabel?
 
     private var hasLaidOut = false
 
@@ -69,6 +71,8 @@ class ViewController: UIViewController, WKNavigationDelegate {
     private var touchOverlay: UIView!
     private var horizontalLine: UIView!
     private var verticalLine: UIView!
+    private var horizontalLabel: UILabel!
+    private var verticalLabel: UILabel!
     private var debugView: UIView!
     private var links: [LinkInfo] = []
     private var linksEnumerated = false
@@ -169,16 +173,26 @@ class ViewController: UIViewController, WKNavigationDelegate {
 
         // Create control indicator lines
         horizontalLine = UIView()
-        horizontalLine.backgroundColor = .green
+        horizontalLine.backgroundColor = .red
         horizontalLine.layer.zPosition = 1000
-        horizontalLine.isHidden = true
         view.addSubview(horizontalLine)
 
+        horizontalLabel = UILabel()
+        horizontalLabel.font = UIFont.boldSystemFont(ofSize: 36)
+        horizontalLabel.textColor = .red
+        horizontalLabel.layer.zPosition = 1000
+        view.addSubview(horizontalLabel)
+
         verticalLine = UIView()
-        verticalLine.backgroundColor = .green
+        verticalLine.backgroundColor = .blue
         verticalLine.layer.zPosition = 1000
-        verticalLine.isHidden = true
         view.addSubview(verticalLine)
+
+        verticalLabel = UILabel()
+        verticalLabel.font = UIFont.boldSystemFont(ofSize: 36)
+        verticalLabel.textColor = .blue
+        verticalLabel.layer.zPosition = 1000
+        view.addSubview(verticalLabel)
 
         // Create game over UI
         gameOverLabel = UILabel()
@@ -477,9 +491,15 @@ class ViewController: UIViewController, WKNavigationDelegate {
         if controlX >= 0 {
             horizontalLine.frame = CGRect(x: centerX, y: centerY - lineThickness/2,
                                          width: horizontalLineLength, height: lineThickness)
+            horizontalLabel.text = String(format: "%.2f", controlX)
+            horizontalLabel.sizeToFit()
+            horizontalLabel.frame.origin = CGPoint(x: centerX + horizontalLineLength + 5, y: centerY - horizontalLabel.frame.height/2)
         } else {
             horizontalLine.frame = CGRect(x: centerX + horizontalLineLength, y: centerY - lineThickness/2,
                                          width: -horizontalLineLength, height: lineThickness)
+            horizontalLabel.text = String(format: "%.2f", controlX)
+            horizontalLabel.sizeToFit()
+            horizontalLabel.frame.origin = CGPoint(x: centerX + horizontalLineLength - horizontalLabel.frame.width - 5, y: centerY - horizontalLabel.frame.height/2)
         }
 
         // Vertical line showing Y control
@@ -487,9 +507,15 @@ class ViewController: UIViewController, WKNavigationDelegate {
         if controlY >= 0 {
             verticalLine.frame = CGRect(x: centerX - lineThickness/2, y: centerY,
                                        width: lineThickness, height: verticalLineLength)
+            verticalLabel.text = String(format: "%.2f", controlY)
+            verticalLabel.sizeToFit()
+            verticalLabel.frame.origin = CGPoint(x: centerX - verticalLabel.frame.width/2, y: centerY + verticalLineLength + 5)
         } else {
             verticalLine.frame = CGRect(x: centerX - lineThickness/2, y: centerY + verticalLineLength,
                                        width: lineThickness, height: -verticalLineLength)
+            verticalLabel.text = String(format: "%.2f", controlY)
+            verticalLabel.sizeToFit()
+            verticalLabel.frame.origin = CGPoint(x: centerX - verticalLabel.frame.width/2, y: centerY + verticalLineLength - verticalLabel.frame.height - 5)
         }
 
         // Wait 5 seconds before starting animation
@@ -699,17 +725,23 @@ class ViewController: UIViewController, WKNavigationDelegate {
         externalVC.gameDebugView = debugView
         externalVC.gameHorizontalLine = horizontalLine
         externalVC.gameVerticalLine = verticalLine
+        externalVC.gameHorizontalLabel = horizontalLabel
+        externalVC.gameVerticalLabel = verticalLabel
 
         // Move visual game UI to external display (keep touchOverlay and game over UI on phone)
         webView.removeFromSuperview()
         debugView.removeFromSuperview()
         horizontalLine.removeFromSuperview()
         verticalLine.removeFromSuperview()
+        horizontalLabel.removeFromSuperview()
+        verticalLabel.removeFromSuperview()
 
         externalVC.view.addSubview(webView)
         externalVC.view.addSubview(debugView)
         externalVC.view.addSubview(horizontalLine)
         externalVC.view.addSubview(verticalLine)
+        externalVC.view.addSubview(horizontalLabel)
+        externalVC.view.addSubview(verticalLabel)
 
         // Trigger layout
         externalVC.view.setNeedsLayout()
@@ -775,12 +807,16 @@ class ViewController: UIViewController, WKNavigationDelegate {
         debugView.removeFromSuperview()
         horizontalLine.removeFromSuperview()
         verticalLine.removeFromSuperview()
+        horizontalLabel.removeFromSuperview()
+        verticalLabel.removeFromSuperview()
 
         view.addSubview(webView)
         view.addSubview(touchOverlay)
         view.addSubview(debugView)
         view.addSubview(horizontalLine)
         view.addSubview(verticalLine)
+        view.addSubview(horizontalLabel)
+        view.addSubview(verticalLabel)
         view.addSubview(gameOverLabel)
         view.addSubview(restartButton)
         view.addSubview(progressLabel)
