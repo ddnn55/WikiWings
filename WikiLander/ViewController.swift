@@ -463,8 +463,10 @@ class ViewController: UIViewController, WKNavigationDelegate {
         accumulatedScale *= pow(scalePower, deltaTime * diveSpeed * turboPower)
 
         // Accumulate offsets with inverse scale proportionality
-        accumulatedOffsetX -= (controlX * controlPower) / accumulatedScale
-        accumulatedOffsetY += (controlY * controlPower) / accumulatedScale
+        // Scale control power based on screen width for consistent feel across displays
+        let effectiveControlPower = controlPower * (displayView.bounds.width / 390.0) // normalized to iPhone width
+        accumulatedOffsetX -= (controlX * effectiveControlPower) / accumulatedScale
+        accumulatedOffsetY += (controlY * effectiveControlPower) / accumulatedScale
 
         // Use transform instead of bounds to scale everything proportionally
         let transform = CGAffineTransform(scaleX: accumulatedScale, y: accumulatedScale).translatedBy(x: accumulatedOffsetX, y: accumulatedOffsetY)
