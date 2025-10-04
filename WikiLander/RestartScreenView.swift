@@ -12,7 +12,7 @@ struct RestartScreenView: View {
 
     var body: some View {
         Button(action: onRestart) {
-            Text("START AGAIN")
+            Text("TRY AGAIN")
                 .font(.system(size: 24, weight: .bold))
                 .foregroundColor(.blue)
                 .frame(width: 200, height: 50)
