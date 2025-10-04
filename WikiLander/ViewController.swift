@@ -98,6 +98,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
     // Audio
     private var crashAudioPlayer: AVAudioPlayer?
     private var rocketEngineAudioPlayer: AVAudioPlayer?
+    private var linkHitAudioPlayer: AVAudioPlayer?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -247,6 +248,19 @@ class ViewController: UIViewController, WKNavigationDelegate {
         }
         else {
             print("failed to create rocket engine soundURL")
+        }
+
+        // Load link hit sound
+        if let soundURL = Bundle.main.url(forResource: "Link_Hit", withExtension: "wav") {
+            do {
+                linkHitAudioPlayer = try AVAudioPlayer(contentsOf: soundURL)
+                linkHitAudioPlayer?.prepareToPlay()
+            } catch {
+                print("Failed to load link hit sound: \(error)")
+            }
+        }
+        else {
+            print("failed to create link hit soundURL")
         }
 
         // Start scaling animation at 60Hz
@@ -483,6 +497,9 @@ class ViewController: UIViewController, WKNavigationDelegate {
             if link.bounds.contains(screenBoundsInDebugView) {
                 foundContainingLink = true
                 print("🎯 Link \(index) contains screen: '\(link.text)' -> \(link.href)")
+
+                // Play link hit sound
+                linkHitAudioPlayer?.play()
 
                 // Navigate to the link
                 if let url = URL(string: link.href) {
