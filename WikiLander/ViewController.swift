@@ -25,13 +25,17 @@ class ViewController: UIViewController {
     private var controlY: Double = 0.0
     private var accumulatedOffsetX: Double = 0.0
     private var accumulatedOffsetY: Double = 0.0
-    private let controlPower: Double = 2.0
+    private let controlPower: Double = 4.0
     private var diveSpeed: Double = 1.0
     private var horizontalLine: UIView!
     private var verticalLine: UIView!
     private var debugView: UIView!
     private var links: [LinkInfo] = []
     private var lastEnumerationTime: CFTimeInterval = 0
+    private var isGameOver = false
+    private var gameOverLabel: UILabel!
+    private var restartButton: UIButton!
+    private let originalURL = "https://en.wikipedia.org/wiki/Main_Page"
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -74,7 +78,7 @@ class ViewController: UIViewController {
         webView.scrollView.zoomScale = scale
 
         // Load Wikipedia
-        if let url = URL(string: "https://en.wikipedia.org/wiki/Main_Page") {
+        if let url = URL(string: originalURL) {
             let request = URLRequest(url: url)
             webView.load(request)
         }
@@ -92,6 +96,27 @@ class ViewController: UIViewController {
         verticalLine.isHidden = true
         view.addSubview(verticalLine)
 
+        // Create game over UI
+        gameOverLabel = UILabel()
+        gameOverLabel.text = "GAME OVER"
+        gameOverLabel.font = UIFont.boldSystemFont(ofSize: 48)
+        gameOverLabel.textColor = .red
+        gameOverLabel.textAlignment = .center
+        gameOverLabel.isHidden = true
+        gameOverLabel.layer.zPosition = 2000
+        view.addSubview(gameOverLabel)
+
+        restartButton = UIButton(type: .system)
+        restartButton.setTitle("START AGAIN", for: .normal)
+        restartButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 24)
+        restartButton.backgroundColor = .white
+        restartButton.setTitleColor(.blue, for: .normal)
+        restartButton.layer.cornerRadius = 10
+        restartButton.isHidden = true
+        restartButton.layer.zPosition = 2000
+        restartButton.addTarget(self, action: #selector(restartGame), for: .touchUpInside)
+        view.addSubview(restartButton)
+
         // Start motion manager
         motionManager = CMMotionManager()
         if motionManager.isDeviceMotionAvailable {
@@ -103,6 +128,17 @@ class ViewController: UIViewController {
         displayLink = CADisplayLink(target: self, selector: #selector(updateScale))
         displayLink.add(to: .main, forMode: .common)
         startTime = CACurrentMediaTime()
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+
+        // Layout game over UI
+        let centerX = view.bounds.midX
+        let centerY = view.bounds.midY
+
+        gameOverLabel.frame = CGRect(x: centerX - 200, y: centerY - 100, width: 400, height: 60)
+        restartButton.frame = CGRect(x: centerX - 100, y: centerY + 20, width: 200, height: 50)
     }
 
     private func enumerateLinks() {
@@ -171,17 +207,6 @@ class ViewController: UIViewController {
                     shapeLayer.fillColor = UIColor.clear.cgColor
                     shapeLayer.lineWidth = 2.0
                     self.debugView.layer.addSublayer(shapeLayer)
-
-                    // Add text layer
-                    let textLayer = CATextLayer()
-                    textLayer.frame = rect
-                    textLayer.string = "\(index)"
-                    textLayer.fontSize = 12
-                    textLayer.foregroundColor = UIColor.red.cgColor
-                    textLayer.backgroundColor = UIColor.white.withAlphaComponent(0.7).cgColor
-                    textLayer.contentsScale = UIScreen.main.scale
-                    textLayer.isWrapped = true
-                    self.debugView.layer.addSublayer(textLayer)
                 }
 
                 // Print maximum x+width value
@@ -192,6 +217,11 @@ class ViewController: UIViewController {
     }
 
     @objc private func updateScale() {
+        // Stop updates if game is over
+        if isGameOver {
+            return
+        }
+
         let elapsed = CACurrentMediaTime() - startTime
 
         // Read accelerometer and update control values
@@ -264,14 +294,24 @@ class ViewController: UIViewController {
         // Convert screen bounds to debugView's coordinate space (which has the same transform as webView)
         let screenBoundsInDebugView = view.convert(screenBounds, to: debugView)
 
+        // Check for intersections
+        var hasIntersection = false
+        var foundContainingLink = false
+
         for (index, link) in links.enumerated() {
             // Print debug info for 64th link
-            if index == 64 {
-                 print("link:   \(link.bounds)")
-                 print("screen (debugView space): \(screenBoundsInDebugView)")
+//            if index == 64 {
+//                 print("link:   \(link.bounds)")
+//                 print("screen (debugView space): \(screenBoundsInDebugView)")
+//            }
+
+            // Check if link intersects screen
+            if link.bounds.intersects(screenBoundsInDebugView) {
+                hasIntersection = true
             }
 
             if link.bounds.contains(screenBoundsInDebugView) {
+                foundContainingLink = true
                 print("🎯 Link \(index) contains screen: '\(link.text)' -> \(link.href)")
 
                 // Navigate to the link
@@ -289,6 +329,44 @@ class ViewController: UIViewController {
                 break // Only navigate to first matching link
             }
         }
+
+        // Check for game over condition: no links intersecting screen and we have links enumerated
+        if !hasIntersection && !links.isEmpty && !isGameOver && !foundContainingLink {
+            isGameOver = true
+            gameOverLabel.isHidden = false
+            restartButton.isHidden = false
+            displayLink.isPaused = true
+        }
+    }
+
+    @objc private func restartGame() {
+        // Reset all state
+        isGameOver = false
+        gameOverLabel.isHidden = true
+        restartButton.isHidden = true
+
+        // Reset game variables
+        accumulatedOffsetX = 0.0
+        accumulatedOffsetY = 0.0
+        diveSpeed = 1.0
+        startTime = CACurrentMediaTime()
+        lastEnumerationTime = 0.0
+        links.removeAll()
+
+        // Clear debug view
+        debugView.layer.sublayers?.forEach { $0.removeFromSuperlayer() }
+
+        // Reset transforms
+        webView.transform = .identity
+        debugView.transform = .identity
+
+        // Load original URL
+        if let url = URL(string: originalURL) {
+            webView.load(URLRequest(url: url))
+        }
+
+        // Resume animation
+        displayLink.isPaused = false
     }
 
     override var prefersStatusBarHidden: Bool {
