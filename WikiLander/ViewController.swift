@@ -21,7 +21,9 @@ class ViewController: UIViewController {
     private var accumulatedOffsetY: Double = 0.0
     private var horizontalLine: UIView!
     private var verticalLine: UIView!
-    private var hasEnumeratedLinks = false
+    private var debugView: UIView!
+    private var linkBounds: [CGRect] = []
+    private var lastEnumerationTime: CFTimeInterval = 0
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -31,6 +33,11 @@ class ViewController: UIViewController {
         configuration.applicationNameForUserAgent = "Version/15.0 Safari/605.1.15"
 
         webView = WKWebView(frame: view.bounds, configuration: configuration)
+
+        // Enable web inspector
+        if #available(iOS 16.4, *) {
+            webView.isInspectable = true
+        }
 
         // Set custom user agent for desktop layout
         webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Safari/605.1.15"
@@ -44,6 +51,12 @@ class ViewController: UIViewController {
         webView.contentScaleFactor = UIScreen.main.scale * 4
 
         view.addSubview(webView)
+
+        // Create debug view for link visualization
+        debugView = UIView(frame: view.bounds)
+        debugView.backgroundColor = .clear
+        debugView.isUserInteractionEnabled = false
+        view.addSubview(debugView)
 
         // Calculate scale to fit 1920px logical width
         let screenWidth = UIScreen.main.bounds.width
@@ -89,10 +102,15 @@ class ViewController: UIViewController {
         (function() {
             const links = document.querySelectorAll('a[href]');
             const results = [];
-            links.forEach((link, index) => {
+            let resultIndex = 0;
+            links.forEach((link) => {
+                const style = window.getComputedStyle(link);
+                if (style.visibility === 'hidden') {
+                    return;
+                }
                 const rect = link.getBoundingClientRect();
                 results.push({
-                    index: index,
+                    index: resultIndex++,
                     href: link.href,
                     text: link.textContent.trim().substring(0, 50),
                     x: rect.x,
@@ -113,6 +131,11 @@ class ViewController: UIViewController {
 
             if let links = result as? [[String: Any]] {
                 print("Found \(links.count) links:")
+                self.linkBounds.removeAll()
+
+                // Clear existing debug rectangles
+                self.debugView.layer.sublayers?.forEach { $0.removeFromSuperlayer() }
+
                 for link in links {
                     let index = link["index"] as? Int ?? -1
                     let href = link["href"] as? String ?? ""
@@ -123,6 +146,28 @@ class ViewController: UIViewController {
                     let height = link["height"] as? Double ?? 0
                     print("[\(index)] '\(text)' -> \(href)")
                     print("   Bounds: (x: \(x), y: \(y), width: \(width), height: \(height))")
+
+                    // Store bounds and create debug rectangle
+                    let rect = CGRect(x: x, y: y, width: width, height: height)
+                    self.linkBounds.append(rect)
+
+                    let shapeLayer = CAShapeLayer()
+                    shapeLayer.path = UIBezierPath(rect: rect).cgPath
+                    shapeLayer.strokeColor = UIColor.red.cgColor
+                    shapeLayer.fillColor = UIColor.clear.cgColor
+                    shapeLayer.lineWidth = 2.0
+                    self.debugView.layer.addSublayer(shapeLayer)
+
+                    // Add text layer
+                    let textLayer = CATextLayer()
+                    textLayer.frame = rect
+                    textLayer.string = text
+                    textLayer.fontSize = 12
+                    textLayer.foregroundColor = UIColor.red.cgColor
+                    textLayer.backgroundColor = UIColor.white.withAlphaComponent(0.7).cgColor
+                    textLayer.contentsScale = UIScreen.main.scale
+                    textLayer.isWrapped = true
+                    self.debugView.layer.addSublayer(textLayer)
                 }
             }
         }
@@ -172,9 +217,9 @@ class ViewController: UIViewController {
                                        width: lineThickness, height: -verticalLineLength)
         }
 
-        // Enumerate links after page loads
-        if !hasEnumeratedLinks && elapsed >= 3.0 {
-            hasEnumeratedLinks = true
+        // Enumerate links once per second after page loads
+        if elapsed >= 3.0 && elapsed - lastEnumerationTime >= 1.0 {
+            lastEnumerationTime = elapsed
             enumerateLinks()
         }
 
@@ -191,7 +236,9 @@ class ViewController: UIViewController {
         accumulatedOffsetY += controlY / scaleFactor
 
         // Use transform instead of bounds to scale everything proportionally
-        webView.transform = CGAffineTransform(scaleX: scaleFactor, y: scaleFactor).translatedBy(x: accumulatedOffsetX, y: accumulatedOffsetY)
+        let transform = CGAffineTransform(scaleX: scaleFactor, y: scaleFactor).translatedBy(x: accumulatedOffsetX, y: accumulatedOffsetY)
+//        webView.transform = transform
+//        debugView.transform = transform
     }
 
     override var prefersStatusBarHidden: Bool {
