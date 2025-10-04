@@ -431,6 +431,25 @@ class ViewController: UIViewController, WKNavigationDelegate {
         // Only enumerate links if game has started
         guard gameStarted else { return }
 
+        // Speak page title after link hit sound finishes (but not for original URL)
+        if webView.url?.absoluteString != originalURL && hopCount > 0 {
+            webView.evaluateJavaScript("document.title") { [weak self] result, error in
+                guard let self = self, let title = result as? String else { return }
+
+                // Remove " - Wikipedia" suffix if present
+                let cleanTitle = title.hasSuffix(" - Wikipedia") ?
+                    String(title.dropLast(" - Wikipedia".count)) : title
+
+                // Wait for link hit sound to finish before speaking
+                let soundDuration = self.linkHitAudioPlayer?.duration ?? 0
+                DispatchQueue.main.asyncAfter(deadline: .now() + soundDuration) {
+                    let utterance = AVSpeechUtterance(string: cleanTitle)
+                    utterance.rate = 0.5
+                    self.speechSynthesizer.speak(utterance)
+                }
+            }
+        }
+
         // Enumerate links once when page finishes loading
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             self.enumerateLinks()
@@ -568,14 +587,6 @@ class ViewController: UIViewController, WKNavigationDelegate {
 
                 // Play link hit sound
                 linkHitAudioPlayer?.play()
-
-                // Speak link text after sound finishes
-                let soundDuration = linkHitAudioPlayer?.duration ?? 0
-                DispatchQueue.main.asyncAfter(deadline: .now() + soundDuration) { [weak self] in
-                    let utterance = AVSpeechUtterance(string: link.text)
-                    utterance.rate = 0.5
-                    self?.speechSynthesizer.speak(utterance)
-                }
 
                 // Track progress
                 hopCount += 1
