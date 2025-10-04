@@ -639,6 +639,13 @@ class ViewController: UIViewController, WKNavigationDelegate {
             let pathText = linkHistory.joined(separator: " ➡️ ")
             progressLabel.text = "\(hopText)\n\n\(pathText)"
 
+            // Adjust font size for external display
+            if externalWindow != nil {
+                progressLabel.font = UIFont.systemFont(ofSize: 140)
+            } else {
+                progressLabel.font = UIFont.systemFont(ofSize: 14)
+            }
+
             displayLink.isPaused = true
         }
     }
