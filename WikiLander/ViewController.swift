@@ -9,6 +9,12 @@ import UIKit
 import WebKit
 import CoreMotion
 
+struct LinkInfo {
+    let bounds: CGRect
+    let href: String
+    let text: String
+}
+
 class ViewController: UIViewController {
 
     private var webView: WKWebView!
@@ -22,7 +28,7 @@ class ViewController: UIViewController {
     private var horizontalLine: UIView!
     private var verticalLine: UIView!
     private var debugView: UIView!
-    private var linkBounds: [CGRect] = []
+    private var links: [LinkInfo] = []
     private var lastEnumerationTime: CFTimeInterval = 0
 
     override func viewDidLoad() {
@@ -135,8 +141,8 @@ class ViewController: UIViewController {
             }
 
             if let links = result as? [[String: Any]] {
-                print("Found \(links.count) links:")
-                self.linkBounds.removeAll()
+                // print("Found \(links.count) links:")
+                self.links.removeAll()
 
                 // Clear existing debug rectangles
                 self.debugView.layer.sublayers?.forEach { $0.removeFromSuperlayer() }
@@ -149,12 +155,13 @@ class ViewController: UIViewController {
                     let y = link["y"] as? Double ?? 0
                     let width = link["width"] as? Double ?? 0
                     let height = link["height"] as? Double ?? 0
-                    print("[\(index)] '\(text)' -> \(href)")
-                    print("   Bounds: (x: \(x), y: \(y), width: \(width), height: \(height))")
+                    // print("[\(index)] '\(text)' -> \(href)")
+                    // print("   Bounds: (x: \(x), y: \(y), width: \(width), height: \(height))")
 
                     // Store bounds and create debug rectangle
                     let rect = CGRect(x: x + leftSafeArea, y: y, width: width, height: height)
-                    self.linkBounds.append(rect)
+                    let linkInfo = LinkInfo(bounds: rect, href: href, text: text)
+                    self.links.append(linkInfo)
 
                     let shapeLayer = CAShapeLayer()
                     shapeLayer.path = UIBezierPath(rect: rect).cgPath
@@ -166,7 +173,7 @@ class ViewController: UIViewController {
                     // Add text layer
                     let textLayer = CATextLayer()
                     textLayer.frame = rect
-                    textLayer.string = text
+                    textLayer.string = "\(index)"
                     textLayer.fontSize = 12
                     textLayer.foregroundColor = UIColor.red.cgColor
                     textLayer.backgroundColor = UIColor.white.withAlphaComponent(0.7).cgColor
@@ -176,8 +183,8 @@ class ViewController: UIViewController {
                 }
 
                 // Print maximum x+width value
-                let maxXPlusWidth = self.linkBounds.map { $0.maxX }.max() ?? 0
-                print("Maximum (x+width) value: \(maxXPlusWidth)")
+                let maxXPlusWidth = self.links.map { $0.bounds.maxX }.max() ?? 0
+                // print("Maximum (x+width) value: \(maxXPlusWidth)")
             }
         }
     }
@@ -246,8 +253,26 @@ class ViewController: UIViewController {
 
         // Use transform instead of bounds to scale everything proportionally
         let transform = CGAffineTransform(scaleX: scaleFactor, y: scaleFactor).translatedBy(x: accumulatedOffsetX, y: accumulatedOffsetY)
-//        webView.transform = transform
-//        debugView.transform = transform
+       webView.transform = transform
+       debugView.transform = transform
+
+        // Check if any link bounds (with transform applied) completely contain the screen bounds
+        let screenBounds = view.bounds
+
+        // Convert screen bounds to debugView's coordinate space (which has the same transform as webView)
+        let screenBoundsInDebugView = view.convert(screenBounds, to: debugView)
+
+        for (index, link) in links.enumerated() {
+            // Print debug info for 64th link
+            if index == 64 {
+                 print("link:   \(link.bounds)")
+                 print("screen (debugView space): \(screenBoundsInDebugView)")
+            }
+
+            if link.bounds.contains(screenBoundsInDebugView) {
+                print("🎯 Link \(index) contains screen: '\(link.text)' -> \(link.href)")
+            }
+        }
     }
 
     override var prefersStatusBarHidden: Bool {
