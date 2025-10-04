@@ -60,6 +60,7 @@ class ExternalDisplayViewController: UIViewController {
 class ViewController: UIViewController, WKNavigationDelegate {
 
     private let showDebugRectangles = false
+    private let showControlLines = false
 
     private var webView: WKWebView!
     private var displayLink: CADisplayLink!
@@ -101,6 +102,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
     private var crashAudioPlayer: AVAudioPlayer?
     private var rocketEngineAudioPlayer: AVAudioPlayer?
     private var linkHitAudioPlayer: AVAudioPlayer?
+    private var speechSynthesizer = AVSpeechSynthesizer()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -174,23 +176,27 @@ class ViewController: UIViewController, WKNavigationDelegate {
         horizontalLine = UIView()
         horizontalLine.backgroundColor = .red
         horizontalLine.layer.zPosition = 1000
+        horizontalLine.isHidden = !showControlLines
         view.addSubview(horizontalLine)
 
         horizontalLabel = UILabel()
         horizontalLabel.font = UIFont.boldSystemFont(ofSize: 36)
         horizontalLabel.textColor = .red
         horizontalLabel.layer.zPosition = 1000
+        horizontalLabel.isHidden = !showControlLines
         view.addSubview(horizontalLabel)
 
         verticalLine = UIView()
         verticalLine.backgroundColor = .blue
         verticalLine.layer.zPosition = 1000
+        verticalLine.isHidden = !showControlLines
         view.addSubview(verticalLine)
 
         verticalLabel = UILabel()
         verticalLabel.font = UIFont.boldSystemFont(ofSize: 36)
         verticalLabel.textColor = .blue
         verticalLabel.layer.zPosition = 1000
+        verticalLabel.isHidden = !showControlLines
         view.addSubview(verticalLabel)
 
         // Create game over UI
@@ -457,40 +463,43 @@ class ViewController: UIViewController, WKNavigationDelegate {
 
         // Update control indicator lines
         let displayView = externalViewController?.view ?? view!
-        let centerX = displayView.bounds.width / 2
-        let centerY = displayView.bounds.height / 2
-        let lineThickness: CGFloat = 3
 
-        // Horizontal line showing X control
-        let horizontalLineLength = CGFloat(controlX) * (displayView.bounds.width / 2)
-        if controlX >= 0 {
-            horizontalLine.frame = CGRect(x: centerX, y: centerY - lineThickness/2,
-                                         width: horizontalLineLength, height: lineThickness)
-            horizontalLabel.text = String(format: "%.2f", controlX)
-            horizontalLabel.sizeToFit()
-            horizontalLabel.frame.origin = CGPoint(x: centerX + horizontalLineLength + 5, y: centerY - horizontalLabel.frame.height/2)
-        } else {
-            horizontalLine.frame = CGRect(x: centerX + horizontalLineLength, y: centerY - lineThickness/2,
-                                         width: -horizontalLineLength, height: lineThickness)
-            horizontalLabel.text = String(format: "%.2f", controlX)
-            horizontalLabel.sizeToFit()
-            horizontalLabel.frame.origin = CGPoint(x: centerX + horizontalLineLength - horizontalLabel.frame.width - 5, y: centerY - horizontalLabel.frame.height/2)
-        }
+        if showControlLines {
+            let centerX = displayView.bounds.width / 2
+            let centerY = displayView.bounds.height / 2
+            let lineThickness: CGFloat = 3
 
-        // Vertical line showing Y control
-        let verticalLineLength = CGFloat(controlY) * (displayView.bounds.height / 2)
-        if controlY >= 0 {
-            verticalLine.frame = CGRect(x: centerX - lineThickness/2, y: centerY,
-                                       width: lineThickness, height: verticalLineLength)
-            verticalLabel.text = String(format: "%.2f", controlY)
-            verticalLabel.sizeToFit()
-            verticalLabel.frame.origin = CGPoint(x: centerX - verticalLabel.frame.width/2, y: centerY + verticalLineLength + 5)
-        } else {
-            verticalLine.frame = CGRect(x: centerX - lineThickness/2, y: centerY + verticalLineLength,
-                                       width: lineThickness, height: -verticalLineLength)
-            verticalLabel.text = String(format: "%.2f", controlY)
-            verticalLabel.sizeToFit()
-            verticalLabel.frame.origin = CGPoint(x: centerX - verticalLabel.frame.width/2, y: centerY + verticalLineLength - verticalLabel.frame.height - 5)
+            // Horizontal line showing X control
+            let horizontalLineLength = CGFloat(controlX) * (displayView.bounds.width / 2)
+            if controlX >= 0 {
+                horizontalLine.frame = CGRect(x: centerX, y: centerY - lineThickness/2,
+                                             width: horizontalLineLength, height: lineThickness)
+                horizontalLabel.text = String(format: "%.2f", controlX)
+                horizontalLabel.sizeToFit()
+                horizontalLabel.frame.origin = CGPoint(x: centerX + horizontalLineLength + 5, y: centerY - horizontalLabel.frame.height/2)
+            } else {
+                horizontalLine.frame = CGRect(x: centerX + horizontalLineLength, y: centerY - lineThickness/2,
+                                             width: -horizontalLineLength, height: lineThickness)
+                horizontalLabel.text = String(format: "%.2f", controlX)
+                horizontalLabel.sizeToFit()
+                horizontalLabel.frame.origin = CGPoint(x: centerX + horizontalLineLength - horizontalLabel.frame.width - 5, y: centerY - horizontalLabel.frame.height/2)
+            }
+
+            // Vertical line showing Y control
+            let verticalLineLength = CGFloat(controlY) * (displayView.bounds.height / 2)
+            if controlY >= 0 {
+                verticalLine.frame = CGRect(x: centerX - lineThickness/2, y: centerY,
+                                           width: lineThickness, height: verticalLineLength)
+                verticalLabel.text = String(format: "%.2f", controlY)
+                verticalLabel.sizeToFit()
+                verticalLabel.frame.origin = CGPoint(x: centerX - verticalLabel.frame.width/2, y: centerY + verticalLineLength + 5)
+            } else {
+                verticalLine.frame = CGRect(x: centerX - lineThickness/2, y: centerY + verticalLineLength,
+                                           width: lineThickness, height: -verticalLineLength)
+                verticalLabel.text = String(format: "%.2f", controlY)
+                verticalLabel.sizeToFit()
+                verticalLabel.frame.origin = CGPoint(x: centerX - verticalLabel.frame.width/2, y: centerY + verticalLineLength - verticalLabel.frame.height - 5)
+            }
         }
 
         // Wait 5 seconds before starting animation
@@ -559,6 +568,14 @@ class ViewController: UIViewController, WKNavigationDelegate {
 
                 // Play link hit sound
                 linkHitAudioPlayer?.play()
+
+                // Speak link text after sound finishes
+                let soundDuration = linkHitAudioPlayer?.duration ?? 0
+                DispatchQueue.main.asyncAfter(deadline: .now() + soundDuration) { [weak self] in
+                    let utterance = AVSpeechUtterance(string: link.text)
+                    utterance.rate = 0.5
+                    self?.speechSynthesizer.speak(utterance)
+                }
 
                 // Track progress
                 hopCount += 1
