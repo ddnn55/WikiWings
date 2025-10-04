@@ -17,6 +17,8 @@ class ViewController: UIViewController {
     private var motionManager: CMMotionManager!
     private var controlX: Double = 0.0
     private var controlY: Double = 0.0
+    private var accumulatedOffsetX: Double = 0.0
+    private var accumulatedOffsetY: Double = 0.0
     private var horizontalLine: UIView!
     private var verticalLine: UIView!
 
@@ -132,8 +134,12 @@ class ViewController: UIViewController {
         // Double every 3 seconds (slower animation)
         let scaleFactor = pow(2.0, animationTime / 6.0)
 
+        // Accumulate offsets with inverse scale proportionality
+        accumulatedOffsetX += controlX / scaleFactor
+        accumulatedOffsetY += controlY / scaleFactor
+
         // Use transform instead of bounds to scale everything proportionally
-        webView.transform = CGAffineTransform(scaleX: scaleFactor, y: scaleFactor)
+        webView.transform = CGAffineTransform(scaleX: scaleFactor, y: scaleFactor).translatedBy(x: accumulatedOffsetX, y: accumulatedOffsetY)
     }
 
     override var prefersStatusBarHidden: Bool {
