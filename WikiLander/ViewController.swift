@@ -25,6 +25,8 @@ class ViewController: UIViewController {
     private var controlY: Double = 0.0
     private var accumulatedOffsetX: Double = 0.0
     private var accumulatedOffsetY: Double = 0.0
+    private let controlPower: Double = 2.0
+    private var diveSpeed: Double = 1.0
     private var horizontalLine: UIView!
     private var verticalLine: UIView!
     private var debugView: UIView!
@@ -244,12 +246,12 @@ class ViewController: UIViewController {
 
         let animationTime = elapsed - 1.0
 
-        // Double every 3 seconds (slower animation)
-        let scaleFactor = pow(2.0, animationTime / 6.0)
+        // Double every 3 seconds (slower animation), affected by dive speed
+        let scaleFactor = pow(2.0, (animationTime / 6.0) * diveSpeed)
 
         // Accumulate offsets with inverse scale proportionality
-        accumulatedOffsetX -= controlX / scaleFactor
-        accumulatedOffsetY += controlY / scaleFactor
+        accumulatedOffsetX -= (controlX * controlPower) / scaleFactor
+        accumulatedOffsetY += (controlY * controlPower) / scaleFactor
 
         // Use transform instead of bounds to scale everything proportionally
         let transform = CGAffineTransform(scaleX: scaleFactor, y: scaleFactor).translatedBy(x: accumulatedOffsetX, y: accumulatedOffsetY)
@@ -282,6 +284,7 @@ class ViewController: UIViewController {
                 accumulatedOffsetY = 0.0
                 startTime = CACurrentMediaTime()
                 lastEnumerationTime = 0.0 // Force re-enumeration of links on new page
+                diveSpeed += 1.0 // Double the dive speed for next page
 
                 break // Only navigate to first matching link
             }
