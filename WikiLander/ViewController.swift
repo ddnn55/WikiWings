@@ -23,6 +23,8 @@ class ExternalDisplayViewController: UIViewController {
     weak var gameVerticalLine: UIView?
     weak var gameHorizontalLabel: UILabel?
     weak var gameVerticalLabel: UILabel?
+    weak var gameOverLabel: UILabel?
+    weak var gameProgressLabel: UILabel?
 
     private var hasLaidOut = false
 
@@ -41,6 +43,12 @@ class ExternalDisplayViewController: UIViewController {
         // Layout all game views to fill the external display
         gameWebView?.frame = view.bounds
         gameDebugView?.frame = view.bounds
+
+        // Layout game over UI
+        let centerX = view.bounds.midX
+        let centerY = view.bounds.midY
+        gameOverLabel?.frame = CGRect(x: centerX - 200, y: centerY - 150, width: 400, height: 60)
+        gameProgressLabel?.frame = CGRect(x: 20, y: centerY - 70, width: view.bounds.width - 40, height: 140)
     }
 
     override var prefersStatusBarHidden: Bool {
@@ -191,7 +199,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
         // Create game over UI
         gameOverLabel = UILabel()
         gameOverLabel.text = "GAME OVER"
-        gameOverLabel.font = UIFont.boldSystemFont(ofSize: 48)
+        gameOverLabel.font = UIFont.boldSystemFont(ofSize: 200)
         gameOverLabel.textColor = .red
         gameOverLabel.textAlignment = .center
         gameOverLabel.isHidden = true
@@ -721,14 +729,18 @@ class ViewController: UIViewController, WKNavigationDelegate {
         externalVC.gameVerticalLine = verticalLine
         externalVC.gameHorizontalLabel = horizontalLabel
         externalVC.gameVerticalLabel = verticalLabel
+        externalVC.gameOverLabel = gameOverLabel
+        externalVC.gameProgressLabel = progressLabel
 
-        // Move visual game UI to external display (keep touchOverlay and game over UI on phone)
+        // Move visual game UI to external display (keep touchOverlay and restart button on phone)
         webView.removeFromSuperview()
         debugView.removeFromSuperview()
         horizontalLine.removeFromSuperview()
         verticalLine.removeFromSuperview()
         horizontalLabel.removeFromSuperview()
         verticalLabel.removeFromSuperview()
+        gameOverLabel.removeFromSuperview()
+        progressLabel.removeFromSuperview()
 
         externalVC.view.addSubview(webView)
         externalVC.view.addSubview(debugView)
@@ -736,6 +748,8 @@ class ViewController: UIViewController, WKNavigationDelegate {
         externalVC.view.addSubview(verticalLine)
         externalVC.view.addSubview(horizontalLabel)
         externalVC.view.addSubview(verticalLabel)
+        externalVC.view.addSubview(gameOverLabel)
+        externalVC.view.addSubview(progressLabel)
 
         // Trigger layout
         externalVC.view.setNeedsLayout()
@@ -784,11 +798,9 @@ class ViewController: UIViewController, WKNavigationDelegate {
         yolkLabel?.isUserInteractionEnabled = false
         view.addSubview(yolkLabel!)
 
-        // Keep touchOverlay and game over UI on top
+        // Keep touchOverlay, restart button, and welcome screen on top
         view.bringSubviewToFront(touchOverlay)
-        view.bringSubviewToFront(gameOverLabel)
         view.bringSubviewToFront(restartButton)
-        view.bringSubviewToFront(progressLabel)
         view.bringSubviewToFront(welcomeLabel)
         view.bringSubviewToFront(startButton)
     }
@@ -796,13 +808,15 @@ class ViewController: UIViewController, WKNavigationDelegate {
     private func teardownExternalDisplay() {
         guard let externalVC = externalWindow?.rootViewController else { return }
 
-        // Move visual game UI back to main view (touchOverlay and game over UI stayed on phone)
+        // Move visual game UI back to main view (touchOverlay and restart button stayed on phone)
         webView.removeFromSuperview()
         debugView.removeFromSuperview()
         horizontalLine.removeFromSuperview()
         verticalLine.removeFromSuperview()
         horizontalLabel.removeFromSuperview()
         verticalLabel.removeFromSuperview()
+        gameOverLabel.removeFromSuperview()
+        progressLabel.removeFromSuperview()
 
         view.addSubview(webView)
         view.addSubview(touchOverlay)
