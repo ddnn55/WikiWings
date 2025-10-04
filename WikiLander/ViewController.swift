@@ -76,6 +76,9 @@ class ViewController: UIViewController, WKNavigationDelegate {
     private var gameOverLabel: UILabel!
     private var restartButton: UIButton!
     private var progressLabel: UILabel!
+    private var welcomeLabel: UILabel!
+    private var startButton: UIButton!
+    private var gameStarted = false
     private let originalURL = "https://en.wikipedia.org/wiki/Main_Page"
     private var hopCount = 0
     private var linkHistory: [String] = []
@@ -92,6 +95,9 @@ class ViewController: UIViewController, WKNavigationDelegate {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+
+        // Set background color
+        view.backgroundColor = .black
 
         // Configure webview to show desktop layout
         let configuration = WKWebViewConfiguration()
@@ -205,6 +211,27 @@ class ViewController: UIViewController, WKNavigationDelegate {
         progressLabel.backgroundColor = UIColor.black.withAlphaComponent(0.7)
         view.addSubview(progressLabel)
 
+        // Create welcome screen (add after touchOverlay)
+        welcomeLabel = UILabel()
+        welcomeLabel.text = "WikiLander"
+        welcomeLabel.font = UIFont.boldSystemFont(ofSize: 64)
+        welcomeLabel.textColor = .white
+        welcomeLabel.textAlignment = .center
+        view.addSubview(welcomeLabel)
+
+        startButton = UIButton(type: .system)
+        startButton.setTitle("START", for: .normal)
+        startButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 32)
+        startButton.backgroundColor = .white
+        startButton.setTitleColor(.blue, for: .normal)
+        startButton.layer.cornerRadius = 10
+        startButton.addTarget(self, action: #selector(startGame), for: .touchUpInside)
+        view.addSubview(startButton)
+
+        // Bring welcome screen to front so it's above touchOverlay
+        view.bringSubviewToFront(welcomeLabel)
+        view.bringSubviewToFront(startButton)
+
         // Start motion manager
         motionManager = CMMotionManager()
         if motionManager.isDeviceMotionAvailable {
@@ -267,6 +294,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
         // Start scaling animation at 60Hz
         displayLink = CADisplayLink(target: self, selector: #selector(updateScale))
         displayLink.add(to: .main, forMode: .common)
+        displayLink.isPaused = true // Don't start until user taps START
         startTime = CACurrentMediaTime()
     }
 
@@ -286,6 +314,10 @@ class ViewController: UIViewController, WKNavigationDelegate {
         gameOverLabel.frame = CGRect(x: centerX - 200, y: centerY - 150, width: 400, height: 60)
         restartButton.frame = CGRect(x: centerX - 100, y: centerY + 80, width: 200, height: 50)
         progressLabel.frame = CGRect(x: 20, y: centerY - 70, width: view.bounds.width - 40, height: 140)
+
+        // Layout welcome screen
+        welcomeLabel.frame = CGRect(x: 20, y: centerY - 100, width: view.bounds.width - 40, height: 80)
+        startButton.frame = CGRect(x: centerX - 100, y: centerY + 50, width: 200, height: 60)
     }
 
     private func enumerateLinks() {
@@ -400,6 +432,9 @@ class ViewController: UIViewController, WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         // Reset scroll position
         webView.scrollView.contentOffset = .zero
+
+        // Only enumerate links if game has started
+        guard gameStarted else { return }
 
         // Enumerate links once when page finishes loading
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
@@ -576,6 +611,22 @@ class ViewController: UIViewController, WKNavigationDelegate {
         }
     }
 
+    @objc private func startGame() {
+        // Hide welcome screen
+        welcomeLabel.isHidden = true
+        startButton.isHidden = true
+
+        // Mark game as started
+        gameStarted = true
+
+        // Start the animation
+        displayLink.isPaused = false
+        startTime = CACurrentMediaTime()
+
+        // Enumerate links
+        enumerateLinks()
+    }
+
     @objc private func restartGame() {
         // Reset all state
         isGameOver = false
@@ -712,6 +763,8 @@ class ViewController: UIViewController, WKNavigationDelegate {
         view.bringSubviewToFront(gameOverLabel)
         view.bringSubviewToFront(restartButton)
         view.bringSubviewToFront(progressLabel)
+        view.bringSubviewToFront(welcomeLabel)
+        view.bringSubviewToFront(startButton)
     }
 
     private func teardownExternalDisplay() {
