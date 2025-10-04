@@ -126,10 +126,6 @@ class ViewController: UIViewController, WKNavigationDelegate {
         webView.layer.shouldRasterize = false
         webView.contentScaleFactor = UIScreen.main.scale * 4
 
-        // Set anchor point to top-left for transforms
-        webView.layer.anchorPoint = CGPoint(x: 0, y: 0)
-        webView.frame = view.bounds
-
         // Disable user interaction to prevent text selection, etc.
         webView.isUserInteractionEnabled = false
 
@@ -149,8 +145,6 @@ class ViewController: UIViewController, WKNavigationDelegate {
         debugView = UIView(frame: view.bounds)
         debugView.backgroundColor = .clear
         debugView.isUserInteractionEnabled = false
-        debugView.layer.anchorPoint = CGPoint(x: 0, y: 0)
-        debugView.frame = view.bounds
         view.addSubview(debugView)
 
         // Calculate scale to fit 1920px logical width
