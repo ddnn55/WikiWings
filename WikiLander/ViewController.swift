@@ -94,6 +94,9 @@ class ViewController: UIViewController {
             // Roll: -π/2 (top edge away) = -1.0, π/2 (top edge toward) = 1.0
             controlX = 0.0 - max(-1.0, min(1.0, pitch / (Double.pi / 2)))
             controlY = max(-1.0, min(1.0, roll / (Double.pi / 2)))
+            let clampedRoll = min(Double.pi, max(0.0, roll))
+            controlY = 2*(clampedRoll/Double.pi - 0.5)
+            print("roll: \(roll), clampedRoll: \(clampedRoll)")
         }
 
         // Update control indicator lines
