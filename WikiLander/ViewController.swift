@@ -126,6 +126,10 @@ class ViewController: UIViewController, WKNavigationDelegate {
         webView.layer.shouldRasterize = false
         webView.contentScaleFactor = UIScreen.main.scale * 4
 
+        // Set anchor point to top-left for transforms
+        webView.layer.anchorPoint = CGPoint(x: 0, y: 0)
+        webView.frame = view.bounds
+
         // Disable user interaction to prevent text selection, etc.
         webView.isUserInteractionEnabled = false
 
@@ -145,6 +149,8 @@ class ViewController: UIViewController, WKNavigationDelegate {
         debugView = UIView(frame: view.bounds)
         debugView.backgroundColor = .clear
         debugView.isUserInteractionEnabled = false
+        debugView.layer.anchorPoint = CGPoint(x: 0, y: 0)
+        debugView.frame = view.bounds
         view.addSubview(debugView)
 
         // Calculate scale to fit 1920px logical width
@@ -153,6 +159,11 @@ class ViewController: UIViewController, WKNavigationDelegate {
         webView.scrollView.minimumZoomScale = scale
         webView.scrollView.maximumZoomScale = scale
         webView.scrollView.zoomScale = scale
+
+        // Disable scrolling to prevent offset issues
+        webView.scrollView.isScrollEnabled = false
+        webView.scrollView.bounces = false
+        webView.scrollView.contentOffset = .zero
 
         // Load Wikipedia
         if let url = URL(string: originalURL) {
@@ -288,9 +299,14 @@ class ViewController: UIViewController, WKNavigationDelegate {
     }
 
     private func enumerateLinks() {
+        // Ensure scroll position is at origin
+        webView.scrollView.contentOffset = .zero
+
         let zoomScale = webView.scrollView.zoomScale
         let containerView = externalViewController?.view ?? view!
-        let leftSafeArea = containerView.safeAreaInsets.left
+        // Only apply safe area offset on phone screen, not external display
+        let leftSafeArea = externalViewController == nil ? view.safeAreaInsets.left : 0.0
+        let topSafeArea = externalViewController == nil ? view.safeAreaInsets.top : 0.0
 
         let javascript = """
         (function() {
@@ -344,7 +360,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
                     // print("   Bounds: (x: \(x), y: \(y), width: \(width), height: \(height))")
 
                     // Store bounds and create debug rectangle
-                    let rect = CGRect(x: x + leftSafeArea, y: y, width: width, height: height)
+                    let rect = CGRect(x: x + leftSafeArea, y: y + topSafeArea, width: width, height: height)
                     let linkInfo = LinkInfo(bounds: rect, href: href, text: text)
                     self.links.append(linkInfo)
 
@@ -354,6 +370,18 @@ class ViewController: UIViewController, WKNavigationDelegate {
                     shapeLayer.fillColor = UIColor.clear.cgColor
                     shapeLayer.lineWidth = 2.0
                     self.debugView.layer.addSublayer(shapeLayer)
+
+                    // Add text label
+                    let textLayer = CATextLayer()
+                    textLayer.string = text
+                    textLayer.fontSize = 72
+                    textLayer.foregroundColor = UIColor.red.cgColor
+                    textLayer.backgroundColor = UIColor.white.withAlphaComponent(0.5).cgColor
+                    textLayer.contentsScale = UIScreen.main.scale
+                    textLayer.frame = CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: 72)
+                    textLayer.alignmentMode = .left
+                    textLayer.truncationMode = .end
+                    self.debugView.layer.addSublayer(textLayer)
                 }
 
                 // Print maximum x+width value
@@ -380,6 +408,9 @@ class ViewController: UIViewController, WKNavigationDelegate {
     // MARK: - WKNavigationDelegate
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        // Reset scroll position
+        webView.scrollView.contentOffset = .zero
+
         // Enumerate links once when page finishes loading
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             self.enumerateLinks()
