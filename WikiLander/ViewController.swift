@@ -98,11 +98,16 @@ class ViewController: UIViewController {
     }
 
     private func enumerateLinks() {
+        let zoomScale = webView.scrollView.zoomScale
+        let leftSafeArea = view.safeAreaInsets.left
+
         let javascript = """
         (function() {
             const links = document.querySelectorAll('a[href]');
             const results = [];
             let resultIndex = 0;
+            const scrollX = window.pageXOffset || window.scrollX;
+            const scrollY = window.pageYOffset || window.scrollY;
             links.forEach((link) => {
                 const style = window.getComputedStyle(link);
                 if (style.visibility === 'hidden') {
@@ -113,10 +118,10 @@ class ViewController: UIViewController {
                     index: resultIndex++,
                     href: link.href,
                     text: link.textContent.trim().substring(0, 50),
-                    x: rect.x,
-                    y: rect.y,
-                    width: rect.width,
-                    height: rect.height
+                    x: (rect.x + scrollX) * \(zoomScale),
+                    y: (rect.y + scrollY) * \(zoomScale),
+                    width: rect.width * \(zoomScale),
+                    height: rect.height * \(zoomScale)
                 });
             });
             return results;
@@ -148,7 +153,7 @@ class ViewController: UIViewController {
                     print("   Bounds: (x: \(x), y: \(y), width: \(width), height: \(height))")
 
                     // Store bounds and create debug rectangle
-                    let rect = CGRect(x: x, y: y, width: width, height: height)
+                    let rect = CGRect(x: x + leftSafeArea, y: y, width: width, height: height)
                     self.linkBounds.append(rect)
 
                     let shapeLayer = CAShapeLayer()
@@ -169,6 +174,10 @@ class ViewController: UIViewController {
                     textLayer.isWrapped = true
                     self.debugView.layer.addSublayer(textLayer)
                 }
+
+                // Print maximum x+width value
+                let maxXPlusWidth = self.linkBounds.map { $0.maxX }.max() ?? 0
+                print("Maximum (x+width) value: \(maxXPlusWidth)")
             }
         }
     }
