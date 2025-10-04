@@ -61,7 +61,7 @@ class ViewController: UIViewController {
         // Wait 5 seconds before starting animation
         guard elapsed >= 1.0 else { return }
 
-        let animationTime = elapsed - 5.0
+        let animationTime = elapsed - 1.0
 
         // Double every 3 seconds (slower animation)
         let scaleFactor = pow(2.0, animationTime / 6.0)
