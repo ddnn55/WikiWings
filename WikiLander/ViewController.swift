@@ -9,6 +9,7 @@ import UIKit
 import WebKit
 import CoreMotion
 import AVFoundation
+import SwiftUI
 
 struct LinkInfo {
     let bounds: CGRect
@@ -23,8 +24,8 @@ class ExternalDisplayViewController: UIViewController {
     weak var gameVerticalLine: UIView?
     weak var gameHorizontalLabel: UILabel?
     weak var gameVerticalLabel: UILabel?
-    weak var gameOverLabel: UILabel?
-    weak var gameProgressLabel: UILabel?
+    weak var gameOverHostingView: UIView?
+    weak var restartHostingView: UIView?
 
     private var hasLaidOut = false
 
@@ -43,12 +44,8 @@ class ExternalDisplayViewController: UIViewController {
         // Layout all game views to fill the external display
         gameWebView?.frame = view.bounds
         gameDebugView?.frame = view.bounds
-
-        // Layout game over UI
-        let centerX = view.bounds.midX
-        let centerY = view.bounds.midY
-        gameOverLabel?.frame = CGRect(x: centerX - 200, y: centerY - 150, width: 400, height: 60)
-        gameProgressLabel?.frame = CGRect(x: 20, y: centerY - 70, width: view.bounds.width - 40, height: 140)
+        gameOverHostingView?.frame = view.bounds
+        restartHostingView?.frame = view.bounds
     }
 
     override var prefersStatusBarHidden: Bool {
@@ -87,11 +84,9 @@ class ViewController: UIViewController, WKNavigationDelegate {
     private var links: [LinkInfo] = []
     private var linksEnumerated = false
     private var isGameOver = false
-    private var gameOverLabel: UILabel!
-    private var restartButton: UIButton!
-    private var progressLabel: UILabel!
-    private var welcomeLabel: UILabel!
-    private var startButton: UIButton!
+    private var gameOverHostingController: UIHostingController<GameOverScreenView>!
+    private var restartHostingController: UIHostingController<RestartScreenView>!
+    private var startHostingController: UIHostingController<StartScreenView>!
     private var gameStarted = false
     private let originalURL = "https://en.wikipedia.org/wiki/Main_Page"
     private var hopCount = 0
@@ -199,56 +194,37 @@ class ViewController: UIViewController, WKNavigationDelegate {
         view.addSubview(verticalLabel)
 
         // Create game over UI
-        gameOverLabel = UILabel()
-        gameOverLabel.text = "GAME OVER"
-        gameOverLabel.font = UIFont.boldSystemFont(ofSize: 200)
-        gameOverLabel.textColor = .red
-        gameOverLabel.textAlignment = .center
-        gameOverLabel.isHidden = true
-        gameOverLabel.layer.zPosition = 2000
-        view.addSubview(gameOverLabel)
+        let gameOverView = GameOverScreenView(hopCount: hopCount, linkHistory: linkHistory, isExternalDisplay: false)
+        gameOverHostingController = UIHostingController(rootView: gameOverView)
+        gameOverHostingController.view.backgroundColor = .clear
+        gameOverHostingController.view.isHidden = true
+        addChild(gameOverHostingController)
+        view.addSubview(gameOverHostingController.view)
+        gameOverHostingController.didMove(toParent: self)
 
-        restartButton = UIButton(type: .system)
-        restartButton.setTitle("START AGAIN", for: .normal)
-        restartButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 24)
-        restartButton.backgroundColor = .white
-        restartButton.setTitleColor(.blue, for: .normal)
-        restartButton.layer.cornerRadius = 10
-        restartButton.isHidden = true
-        restartButton.layer.zPosition = 2000
-        restartButton.addTarget(self, action: #selector(restartGame), for: .touchUpInside)
-        view.addSubview(restartButton)
-
-        progressLabel = UILabel()
-        progressLabel.font = UIFont.systemFont(ofSize: 14)
-        progressLabel.textColor = .white
-        progressLabel.numberOfLines = 0
-        progressLabel.textAlignment = .center
-        progressLabel.isHidden = true
-        progressLabel.layer.zPosition = 2000
-        progressLabel.backgroundColor = UIColor.black.withAlphaComponent(0.7)
-        view.addSubview(progressLabel)
+        // Create restart UI
+        let restartView = RestartScreenView(onRestart: { [weak self] in
+            self?.restartGame()
+        })
+        restartHostingController = UIHostingController(rootView: restartView)
+        restartHostingController.view.backgroundColor = .clear
+        restartHostingController.view.isHidden = true
+        addChild(restartHostingController)
+        view.addSubview(restartHostingController.view)
+        restartHostingController.didMove(toParent: self)
 
         // Create welcome screen (add after touchOverlay)
-        welcomeLabel = UILabel()
-        welcomeLabel.text = "WikiLander"
-        welcomeLabel.font = UIFont.boldSystemFont(ofSize: 64)
-        welcomeLabel.textColor = .white
-        welcomeLabel.textAlignment = .center
-        view.addSubview(welcomeLabel)
-
-        startButton = UIButton(type: .system)
-        startButton.setTitle("START", for: .normal)
-        startButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 32)
-        startButton.backgroundColor = .white
-        startButton.setTitleColor(.blue, for: .normal)
-        startButton.layer.cornerRadius = 10
-        startButton.addTarget(self, action: #selector(startGame), for: .touchUpInside)
-        view.addSubview(startButton)
+        let startView = StartScreenView(onStart: { [weak self] in
+            self?.startGame()
+        })
+        startHostingController = UIHostingController(rootView: startView)
+        startHostingController.view.backgroundColor = .clear
+        addChild(startHostingController)
+        view.addSubview(startHostingController.view)
+        startHostingController.didMove(toParent: self)
 
         // Bring welcome screen to front so it's above touchOverlay
-        view.bringSubviewToFront(welcomeLabel)
-        view.bringSubviewToFront(startButton)
+        view.bringSubviewToFront(startHostingController.view)
 
         // Start motion manager
         motionManager = CMMotionManager()
@@ -322,20 +298,13 @@ class ViewController: UIViewController, WKNavigationDelegate {
         // Update Yolk label frame if it exists
         yolkLabel?.frame = view.bounds
 
-        // Only layout game UI if it's on the main screen
+        // Layout restart and start screen (always on phone)
+        restartHostingController.view.frame = view.bounds
+        startHostingController.view.frame = view.bounds
+
+        // Only layout game over UI if it's on the main screen
         guard externalWindow == nil else { return }
-
-        // Layout game over UI
-        let centerX = view.bounds.midX
-        let centerY = view.bounds.midY
-
-        gameOverLabel.frame = CGRect(x: centerX - 200, y: centerY - 150, width: 400, height: 60)
-        restartButton.frame = CGRect(x: centerX - 100, y: centerY + 80, width: 200, height: 50)
-        progressLabel.frame = CGRect(x: 20, y: centerY - 70, width: view.bounds.width - 40, height: 140)
-
-        // Layout welcome screen
-        welcomeLabel.frame = CGRect(x: 20, y: centerY - 100, width: view.bounds.width - 40, height: 80)
-        startButton.frame = CGRect(x: centerX - 100, y: centerY + 50, width: 200, height: 60)
+        gameOverHostingController.view.frame = view.bounds
     }
 
     private func enumerateLinks() {
@@ -629,22 +598,13 @@ class ViewController: UIViewController, WKNavigationDelegate {
             rocketEngineAudioPlayer?.stop()
             crashAudioPlayer?.play()
 
-            gameOverLabel.isHidden = false
-            restartButton.isHidden = false
-            progressLabel.isHidden = false
+            // Update game over view with current state
+            let isExternal = externalWindow != nil
+            let gameOverView = GameOverScreenView(hopCount: hopCount, linkHistory: linkHistory, isExternalDisplay: isExternal)
+            gameOverHostingController.rootView = gameOverView
+            gameOverHostingController.view.isHidden = false
+            restartHostingController.view.isHidden = false
             touchOverlay.isUserInteractionEnabled = false
-
-            // Build progress text
-            let hopText = "Survived \(hopCount) hop\(hopCount == 1 ? "" : "s")"
-            let pathText = linkHistory.joined(separator: " ➡️ ")
-            progressLabel.text = "\(hopText)\n\n\(pathText)"
-
-            // Adjust font size for external display
-            if externalWindow != nil {
-                progressLabel.font = UIFont.systemFont(ofSize: 140)
-            } else {
-                progressLabel.font = UIFont.systemFont(ofSize: 14)
-            }
 
             displayLink.isPaused = true
         }
@@ -652,8 +612,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
 
     @objc private func startGame() {
         // Hide welcome screen
-        welcomeLabel.isHidden = true
-        startButton.isHidden = true
+        startHostingController.view.isHidden = true
 
         // Mark game as started
         gameStarted = true
@@ -669,9 +628,8 @@ class ViewController: UIViewController, WKNavigationDelegate {
     @objc private func restartGame() {
         // Reset all state
         isGameOver = false
-        gameOverLabel.isHidden = true
-        restartButton.isHidden = true
-        progressLabel.isHidden = true
+        gameOverHostingController.view.isHidden = true
+        restartHostingController.view.isHidden = true
         touchOverlay.isUserInteractionEnabled = true
         turboPower = 1.0
 
@@ -740,18 +698,21 @@ class ViewController: UIViewController, WKNavigationDelegate {
         externalVC.gameVerticalLine = verticalLine
         externalVC.gameHorizontalLabel = horizontalLabel
         externalVC.gameVerticalLabel = verticalLabel
-        externalVC.gameOverLabel = gameOverLabel
-        externalVC.gameProgressLabel = progressLabel
+        externalVC.gameOverHostingView = gameOverHostingController.view
+        externalVC.restartHostingView = nil // Restart button stays on phone
 
-        // Move visual game UI to external display (keep touchOverlay and restart button on phone)
+        // Move visual game UI to external display (keep touchOverlay, restart button, and start screen on phone)
         webView.removeFromSuperview()
         debugView.removeFromSuperview()
         horizontalLine.removeFromSuperview()
         verticalLine.removeFromSuperview()
         horizontalLabel.removeFromSuperview()
         verticalLabel.removeFromSuperview()
-        gameOverLabel.removeFromSuperview()
-        progressLabel.removeFromSuperview()
+
+        // Properly transfer game over controller to external display (restart stays on phone)
+        gameOverHostingController.willMove(toParent: nil)
+        gameOverHostingController.view.removeFromSuperview()
+        gameOverHostingController.removeFromParent()
 
         externalVC.view.addSubview(webView)
         externalVC.view.addSubview(debugView)
@@ -759,8 +720,10 @@ class ViewController: UIViewController, WKNavigationDelegate {
         externalVC.view.addSubview(verticalLine)
         externalVC.view.addSubview(horizontalLabel)
         externalVC.view.addSubview(verticalLabel)
-        externalVC.view.addSubview(gameOverLabel)
-        externalVC.view.addSubview(progressLabel)
+
+        externalVC.addChild(gameOverHostingController)
+        externalVC.view.addSubview(gameOverHostingController.view)
+        gameOverHostingController.didMove(toParent: externalVC)
 
         // Trigger layout
         externalVC.view.setNeedsLayout()
@@ -798,6 +761,12 @@ class ViewController: UIViewController, WKNavigationDelegate {
             self.enumerateLinks()
         }
 
+        // Re-add restart button to main view (it stays on phone for interaction)
+        addChild(restartHostingController)
+        view.addSubview(restartHostingController.view)
+        restartHostingController.didMove(toParent: self)
+        restartHostingController.view.frame = view.bounds
+
         // Create "Yolk" label for main screen
         yolkLabel = UILabel(frame: view.bounds)
         yolkLabel?.text = "Yolk"
@@ -809,25 +778,27 @@ class ViewController: UIViewController, WKNavigationDelegate {
         yolkLabel?.isUserInteractionEnabled = false
         view.addSubview(yolkLabel!)
 
-        // Keep touchOverlay, restart button, and welcome screen on top
+        // Keep touchOverlay, restart button, and start screen on top
         view.bringSubviewToFront(touchOverlay)
-        view.bringSubviewToFront(restartButton)
-        view.bringSubviewToFront(welcomeLabel)
-        view.bringSubviewToFront(startButton)
+        view.bringSubviewToFront(restartHostingController.view)
+        view.bringSubviewToFront(startHostingController.view)
     }
 
     private func teardownExternalDisplay() {
         guard let externalVC = externalWindow?.rootViewController else { return }
 
-        // Move visual game UI back to main view (touchOverlay and restart button stayed on phone)
+        // Move visual game UI back to main view (touchOverlay, restart button, and start screen stayed on phone)
         webView.removeFromSuperview()
         debugView.removeFromSuperview()
         horizontalLine.removeFromSuperview()
         verticalLine.removeFromSuperview()
         horizontalLabel.removeFromSuperview()
         verticalLabel.removeFromSuperview()
-        gameOverLabel.removeFromSuperview()
-        progressLabel.removeFromSuperview()
+
+        // Properly transfer game over controller back to main view controller
+        gameOverHostingController.willMove(toParent: nil)
+        gameOverHostingController.view.removeFromSuperview()
+        gameOverHostingController.removeFromParent()
 
         view.addSubview(webView)
         view.addSubview(touchOverlay)
@@ -836,9 +807,10 @@ class ViewController: UIViewController, WKNavigationDelegate {
         view.addSubview(verticalLine)
         view.addSubview(horizontalLabel)
         view.addSubview(verticalLabel)
-        view.addSubview(gameOverLabel)
-        view.addSubview(restartButton)
-        view.addSubview(progressLabel)
+
+        addChild(gameOverHostingController)
+        view.addSubview(gameOverHostingController.view)
+        gameOverHostingController.didMove(toParent: self)
 
         // Update frames for main display
         webView.frame = view.bounds
@@ -880,6 +852,9 @@ class ViewController: UIViewController, WKNavigationDelegate {
         // Remove "Yolk" label
         yolkLabel?.removeFromSuperview()
         yolkLabel = nil
+
+        // Ensure restart button stays on top
+        view.bringSubviewToFront(restartHostingController.view)
 
         // Clean up external window and view controller
         externalWindow?.isHidden = true
