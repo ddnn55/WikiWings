@@ -24,7 +24,7 @@ struct GameOverScreenView: View {
                     .foregroundColor(.white)
 
                 Text(linkHistory.joined(separator: " ➡️ "))
-                    .font(.system(size: isExternalDisplay ? 140 : 14))
+                    .font(.system(size: isExternalDisplay ? 70 : 14))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
             }
