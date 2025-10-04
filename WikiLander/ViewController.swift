@@ -21,6 +21,7 @@ class ViewController: UIViewController {
     private var accumulatedOffsetY: Double = 0.0
     private var horizontalLine: UIView!
     private var verticalLine: UIView!
+    private var hasEnumeratedLinks = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -61,11 +62,13 @@ class ViewController: UIViewController {
         horizontalLine = UIView()
         horizontalLine.backgroundColor = .green
         horizontalLine.layer.zPosition = 1000
+        horizontalLine.isHidden = true
         view.addSubview(horizontalLine)
 
         verticalLine = UIView()
         verticalLine.backgroundColor = .green
         verticalLine.layer.zPosition = 1000
+        verticalLine.isHidden = true
         view.addSubview(verticalLine)
 
         // Start motion manager
@@ -79,6 +82,50 @@ class ViewController: UIViewController {
         displayLink = CADisplayLink(target: self, selector: #selector(updateScale))
         displayLink.add(to: .main, forMode: .common)
         startTime = CACurrentMediaTime()
+    }
+
+    private func enumerateLinks() {
+        let javascript = """
+        (function() {
+            const links = document.querySelectorAll('a[href]');
+            const results = [];
+            links.forEach((link, index) => {
+                const rect = link.getBoundingClientRect();
+                results.push({
+                    index: index,
+                    href: link.href,
+                    text: link.textContent.trim().substring(0, 50),
+                    x: rect.x,
+                    y: rect.y,
+                    width: rect.width,
+                    height: rect.height
+                });
+            });
+            return results;
+        })();
+        """
+
+        webView.evaluateJavaScript(javascript) { result, error in
+            if let error = error {
+                print("Error enumerating links: \(error)")
+                return
+            }
+
+            if let links = result as? [[String: Any]] {
+                print("Found \(links.count) links:")
+                for link in links {
+                    let index = link["index"] as? Int ?? -1
+                    let href = link["href"] as? String ?? ""
+                    let text = link["text"] as? String ?? ""
+                    let x = link["x"] as? Double ?? 0
+                    let y = link["y"] as? Double ?? 0
+                    let width = link["width"] as? Double ?? 0
+                    let height = link["height"] as? Double ?? 0
+                    print("[\(index)] '\(text)' -> \(href)")
+                    print("   Bounds: (x: \(x), y: \(y), width: \(width), height: \(height))")
+                }
+            }
+        }
     }
 
     @objc private func updateScale() {
@@ -98,7 +145,6 @@ class ViewController: UIViewController {
             controlY = max(-1.0, min(1.0, roll / (Double.pi / 2)))
             let clampedRoll = min(Double.pi, max(0.0, roll))
             controlY = 2*(clampedRoll/Double.pi - 0.5)
-            print("roll: \(roll), clampedRoll: \(clampedRoll)")
         }
 
         // Update control indicator lines
@@ -126,6 +172,12 @@ class ViewController: UIViewController {
                                        width: lineThickness, height: -verticalLineLength)
         }
 
+        // Enumerate links after page loads
+        if !hasEnumeratedLinks && elapsed >= 3.0 {
+            hasEnumeratedLinks = true
+            enumerateLinks()
+        }
+
         // Wait 5 seconds before starting animation
         guard elapsed >= 1.0 else { return }
 
@@ -135,7 +187,7 @@ class ViewController: UIViewController {
         let scaleFactor = pow(2.0, animationTime / 6.0)
 
         // Accumulate offsets with inverse scale proportionality
-        accumulatedOffsetX += controlX / scaleFactor
+        accumulatedOffsetX -= controlX / scaleFactor
         accumulatedOffsetY += controlY / scaleFactor
 
         // Use transform instead of bounds to scale everything proportionally
