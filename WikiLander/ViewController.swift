@@ -281,6 +281,7 @@ class ViewController: UIViewController {
                 accumulatedOffsetX = 0.0
                 accumulatedOffsetY = 0.0
                 startTime = CACurrentMediaTime()
+                lastEnumerationTime = 0.0 // Force re-enumeration of links on new page
 
                 break // Only navigate to first matching link
             }
