@@ -65,7 +65,7 @@ struct RocketAnimationView: View {
     @State private var rockets: [Rocket] = []
     let rocketCount = 8
     let rocketEmoji = "🚀"
-    let fontSizes: [CGFloat] = [40, 60, 80, 100, 120]
+    let fontSizes: [CGFloat] = [120, 180, 240, 300, 360]
 
     var body: some View {
         GeometryReader { geo in
