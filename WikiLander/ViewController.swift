@@ -500,6 +500,16 @@ class ViewController: UIViewController, WKNavigationDelegate {
         // Reset scroll position
         webView.scrollView.contentOffset = .zero
 
+        // Reset zoom scale to correct value for current display
+        let screenWidth: CGFloat
+        if let externalVC = externalViewController {
+            screenWidth = externalVC.view.bounds.width
+        } else {
+            screenWidth = UIScreen.main.bounds.width
+        }
+        let scale = screenWidth / 1920.0
+        webView.scrollView.zoomScale = scale
+
         // Activate OS theme radio button
         let themeScript = """
         (function() {
