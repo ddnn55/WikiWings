@@ -90,6 +90,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
     private var startHostingController: UIHostingController<StartScreenView>!
     private var gameStarted = false
     private let originalURL = "https://en.wikipedia.org/wiki/Main_Page"
+    // private let originalURL = "https://en.wikipedia.org/wiki/History_of_philosophy"
     private var hopCount = 0
     private var linkHistory: [String] = []
     private var visitedURLs: Set<String> = []
@@ -98,6 +99,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
     private var externalWindow: UIWindow?
     private var yolkImageView: UIImageView?
     private var externalViewController: ExternalDisplayViewController?
+    private var philosophyImageView: UIImageView?
 
     // Audio
     private var crashAudioPlayer: AVAudioPlayer?
@@ -233,6 +235,24 @@ class ViewController: UIViewController, WKNavigationDelegate {
         // Bring welcome screen to front so it's above touchOverlay
         view.bringSubviewToFront(startHostingController.view)
 
+        // Create philosophy image view (initially hidden)
+        philosophyImageView = UIImageView()
+        philosophyImageView?.image = UIImage(named: "philosophy")
+        philosophyImageView?.contentMode = .scaleAspectFill
+        philosophyImageView?.backgroundColor = .black
+        philosophyImageView?.isUserInteractionEnabled = false
+        philosophyImageView?.isHidden = true
+        philosophyImageView?.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(philosophyImageView!)
+
+        // Pin to all edges for fullscreen
+        NSLayoutConstraint.activate([
+            philosophyImageView!.topAnchor.constraint(equalTo: view.topAnchor),
+            philosophyImageView!.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            philosophyImageView!.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            philosophyImageView!.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+        ])
+
         // Start motion manager
         motionManager = CMMotionManager()
         if motionManager.isDeviceMotionAvailable {
@@ -304,6 +324,9 @@ class ViewController: UIViewController, WKNavigationDelegate {
 
         // Update Yolk image view frame if it exists
         yolkImageView?.frame = view.bounds
+
+        // Update philosophy image view frame if it exists
+        philosophyImageView?.frame = view.bounds
 
         // Layout restart and start screen (always on phone)
         restartHostingController.view.frame = view.bounds
@@ -477,6 +500,20 @@ class ViewController: UIViewController, WKNavigationDelegate {
                 // Remove " - Wikipedia" suffix if present
                 let cleanTitle = title.hasSuffix(" - Wikipedia") ?
                     String(title.dropLast(" - Wikipedia".count)) : title
+
+                // Show philosophy image if we've reached the Philosophy page
+                if cleanTitle == "Philosophy" {
+                    DispatchQueue.main.async {
+                        // Show philosophy image on external display if connected, otherwise main screen
+                        if let externalVC = self.externalViewController {
+                            self.philosophyImageView?.removeFromSuperview()
+                            externalVC.view.addSubview(self.philosophyImageView!)
+                            self.philosophyImageView?.frame = externalVC.view.bounds
+                        }
+                        self.philosophyImageView?.isHidden = false
+                        self.view.bringSubviewToFront(self.philosophyImageView!)
+                    }
+                }
 
                 // Wait for link hit sound to finish before speaking
                 let soundDuration = self.linkHitAudioPlayer?.duration ?? 0
@@ -714,6 +751,9 @@ class ViewController: UIViewController, WKNavigationDelegate {
         // Hide welcome screen
         startHostingController.view.isHidden = true
 
+        // Hide philosophy image if visible
+        philosophyImageView?.isHidden = true
+
         // Mark game as started
         gameStarted = true
 
@@ -732,6 +772,9 @@ class ViewController: UIViewController, WKNavigationDelegate {
         restartHostingController.view.isHidden = true
         touchOverlay.isUserInteractionEnabled = true
         turboPower = 1.0
+
+        // Hide philosophy image if visible
+        philosophyImageView?.isHidden = true
 
         // Reset game variables
         accumulatedOffsetX = 0.0
