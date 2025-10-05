@@ -105,6 +105,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
     private var crashAudioPlayer: AVAudioPlayer?
     private var rocketEngineAudioPlayer: AVAudioPlayer?
     private var linkHitAudioPlayer: AVAudioPlayer?
+    private var philosophyAudioPlayer: AVAudioPlayer?
     private var speechSynthesizer = AVSpeechSynthesizer()
 
     override func viewDidLoad() {
@@ -302,6 +303,19 @@ class ViewController: UIViewController, WKNavigationDelegate {
         }
         else {
             print("failed to create link hit soundURL")
+        }
+
+        // Load philosophy sound
+        if let soundURL = Bundle.main.url(forResource: "Philosophy", withExtension: "wav") {
+            do {
+                philosophyAudioPlayer = try AVAudioPlayer(contentsOf: soundURL)
+                philosophyAudioPlayer?.prepareToPlay()
+            } catch {
+                print("Failed to load philosophy sound: \(error)")
+            }
+        }
+        else {
+            print("failed to create philosophy soundURL")
         }
 
         // Start scaling animation at 60Hz
@@ -504,6 +518,9 @@ class ViewController: UIViewController, WKNavigationDelegate {
                 // Show philosophy image if we've reached the Philosophy page
                 if cleanTitle == "Philosophy" {
                     DispatchQueue.main.async {
+                        // Play philosophy sound
+                        self.philosophyAudioPlayer?.play()
+
                         // Show philosophy image on external display if connected, otherwise main screen
                         if let externalVC = self.externalViewController {
                             self.philosophyImageView?.removeFromSuperview()
@@ -532,12 +549,14 @@ class ViewController: UIViewController, WKNavigationDelegate {
                     }
                 }
 
-                // Wait for link hit sound to finish before speaking
-                let soundDuration = self.linkHitAudioPlayer?.duration ?? 0
-                DispatchQueue.main.asyncAfter(deadline: .now() + soundDuration) {
-                    let utterance = AVSpeechUtterance(string: cleanTitle)
-                    utterance.rate = 0.5
-                    self.speechSynthesizer.speak(utterance)
+                // Wait for link hit sound to finish before speaking (skip for Philosophy page)
+                if cleanTitle != "Philosophy" {
+                    let soundDuration = self.linkHitAudioPlayer?.duration ?? 0
+                    DispatchQueue.main.asyncAfter(deadline: .now() + soundDuration) {
+                        let utterance = AVSpeechUtterance(string: cleanTitle)
+                        utterance.rate = 0.5
+                        self.speechSynthesizer.speak(utterance)
+                    }
                 }
             }
         }
@@ -683,8 +702,11 @@ class ViewController: UIViewController, WKNavigationDelegate {
                 foundContainingLink = true
                 print("🎯 Link \(index) contains screen: '\(link.text)' -> \(link.href)")
 
-                // Play link hit sound
-                linkHitAudioPlayer?.play()
+                // Play link hit sound (skip for Philosophy page)
+                let isPhilosophyLink = link.href.contains("wiki/Philosophy")
+                if !isPhilosophyLink {
+                    linkHitAudioPlayer?.play()
+                }
 
                 // Track progress
                 hopCount += 1
@@ -721,13 +743,15 @@ class ViewController: UIViewController, WKNavigationDelegate {
                         // Track this anchor URL as visited
                         visitedURLs.insert(link.href)
 
-                        // Speak link text after sound finishes (since title won't change)
-                        let soundDuration = linkHitAudioPlayer?.duration ?? 0
-                        let linkText = link.text
-                        DispatchQueue.main.asyncAfter(deadline: .now() + soundDuration) { [weak self] in
-                            let utterance = AVSpeechUtterance(string: linkText)
-                            utterance.rate = 0.5
-                            self?.speechSynthesizer.speak(utterance)
+                        // Speak link text after sound finishes (since title won't change, skip for Philosophy)
+                        if !isPhilosophyLink {
+                            let soundDuration = linkHitAudioPlayer?.duration ?? 0
+                            let linkText = link.text
+                            DispatchQueue.main.asyncAfter(deadline: .now() + soundDuration) { [weak self] in
+                                let utterance = AVSpeechUtterance(string: linkText)
+                                utterance.rate = 0.5
+                                self?.speechSynthesizer.speak(utterance)
+                            }
                         }
 
                         // Don't navigate, just re-enumerate links after a delay
