@@ -89,8 +89,8 @@ class ViewController: UIViewController, WKNavigationDelegate {
     private var restartHostingController: UIHostingController<RestartScreenView>!
     private var startHostingController: UIHostingController<StartScreenView>!
     private var gameStarted = false
-    private let originalURL = "https://en.wikipedia.org/wiki/Main_Page"
-    // private let originalURL = "https://en.wikipedia.org/wiki/History_of_philosophy"
+    // private let originalURL = "https://en.wikipedia.org/wiki/Main_Page"
+    private let originalURL = "https://en.wikipedia.org/wiki/History_of_philosophy"
     private var hopCount = 0
     private var linkHistory: [String] = []
     private var visitedURLs: Set<String> = []
@@ -236,22 +236,14 @@ class ViewController: UIViewController, WKNavigationDelegate {
         view.bringSubviewToFront(startHostingController.view)
 
         // Create philosophy image view (initially hidden)
-        philosophyImageView = UIImageView()
+        philosophyImageView = UIImageView(frame: view.bounds)
         philosophyImageView?.image = UIImage(named: "philosophy")
         philosophyImageView?.contentMode = .scaleAspectFill
-        philosophyImageView?.backgroundColor = .black
+        philosophyImageView?.backgroundColor = .clear
         philosophyImageView?.isUserInteractionEnabled = false
         philosophyImageView?.isHidden = true
-        philosophyImageView?.translatesAutoresizingMaskIntoConstraints = false
+        philosophyImageView?.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(philosophyImageView!)
-
-        // Pin to all edges for fullscreen
-        NSLayoutConstraint.activate([
-            philosophyImageView!.topAnchor.constraint(equalTo: view.topAnchor),
-            philosophyImageView!.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            philosophyImageView!.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            philosophyImageView!.trailingAnchor.constraint(equalTo: view.trailingAnchor)
-        ])
 
         // Start motion manager
         motionManager = CMMotionManager()
@@ -325,8 +317,16 @@ class ViewController: UIViewController, WKNavigationDelegate {
         // Update Yolk image view frame if it exists
         yolkImageView?.frame = view.bounds
 
-        // Update philosophy image view frame if it exists
-        philosophyImageView?.frame = view.bounds
+        // Update philosophy image view frame based on where it's displayed
+        if let philosophyView = philosophyImageView {
+            if philosophyView.superview == view {
+                // On main screen
+                philosophyView.frame = view.bounds
+            } else if let externalVC = externalViewController, philosophyView.superview == externalVC.view {
+                // On external display
+                philosophyView.frame = externalVC.view.bounds
+            }
+        }
 
         // Layout restart and start screen (always on phone)
         restartHostingController.view.frame = view.bounds
@@ -507,11 +507,28 @@ class ViewController: UIViewController, WKNavigationDelegate {
                         // Show philosophy image on external display if connected, otherwise main screen
                         if let externalVC = self.externalViewController {
                             self.philosophyImageView?.removeFromSuperview()
-                            externalVC.view.addSubview(self.philosophyImageView!)
                             self.philosophyImageView?.frame = externalVC.view.bounds
+                            self.philosophyImageView?.alpha = 1.0
+                            externalVC.view.addSubview(self.philosophyImageView!)
+                            self.philosophyImageView?.isHidden = false
+                            externalVC.view.bringSubviewToFront(self.philosophyImageView!)
+                            externalVC.view.setNeedsLayout()
+                            externalVC.view.layoutIfNeeded()
+                        } else {
+                            self.philosophyImageView?.frame = self.view.bounds
+                            self.philosophyImageView?.alpha = 1.0
+                            self.philosophyImageView?.isHidden = false
+                            self.view.bringSubviewToFront(self.philosophyImageView!)
+                            self.view.setNeedsLayout()
+                            self.view.layoutIfNeeded()
                         }
-                        self.philosophyImageView?.isHidden = false
-                        self.view.bringSubviewToFront(self.philosophyImageView!)
+
+                        // Fade out after 2 seconds
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            UIView.animate(withDuration: 1.0, animations: {
+                                self.philosophyImageView?.alpha = 0.0
+                            })
+                        }
                     }
                 }
 
