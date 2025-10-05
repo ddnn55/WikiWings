@@ -93,7 +93,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
     private var startSceneHostingController: UIHostingController<StartScreenSceneView>!
     private var gameStarted = false
     private let originalURL = "https://en.wikipedia.org/wiki/Main_Page"
-    // private let originalURL = "https://en.wikipedia.org/wiki/History_of_philosophy"
+//     private let originalURL = "https://en.wikipedia.org/wiki/History_of_philosophy"
     private var hopCount = 0
     private var linkHistory: [String] = []
     private var visitedURLs: Set<String> = []
@@ -296,6 +296,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
                 rocketEngineAudioPlayer = try AVAudioPlayer(contentsOf: soundURL)
                 rocketEngineAudioPlayer?.numberOfLoops = -1 // Loop indefinitely
                 rocketEngineAudioPlayer?.prepareToPlay()
+                rocketEngineAudioPlayer?.play()
             } catch {
                 print("Failed to load rocket engine sound: \(error)")
             }
@@ -559,24 +560,32 @@ class ViewController: UIViewController, WKNavigationDelegate {
                                 self.philosophyImageView?.alpha = 0.0
                             })
                         }
-                    }
-                }
 
-                // Wait for link hit sound to finish before speaking (skip for Philosophy page)
-                if cleanTitle != "Philosophy" {
+                        // Delay link enumeration until after philosophy image fades out completely
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+                            self.enumerateLinks()
+                        }
+                    }
+                } else {
+                    // Wait for link hit sound to finish before speaking
                     let soundDuration = self.linkHitAudioPlayer?.duration ?? 0
                     DispatchQueue.main.asyncAfter(deadline: .now() + soundDuration) {
                         let utterance = AVSpeechUtterance(string: cleanTitle)
                         utterance.rate = 0.5
                         self.speechSynthesizer.speak(utterance)
                     }
+
+                    // Enumerate links with normal delay for non-Philosophy pages
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        self.enumerateLinks()
+                    }
                 }
             }
-        }
-
-        // Enumerate links once when page finishes loading
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            self.enumerateLinks()
+        } else {
+            // Enumerate links once when page finishes loading (for original URL or first load)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                self.enumerateLinks()
+            }
         }
     }
 
@@ -964,7 +973,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
         linksEnumerated = false
 
         // Stop rocket engine sound
-        rocketEngineAudioPlayer?.stop()
+        // rocketEngineAudioPlayer?.stop()
 
         // Re-enumerate links with new scale
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
@@ -1059,7 +1068,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
         linksEnumerated = false
 
         // Stop rocket engine sound
-        rocketEngineAudioPlayer?.stop()
+        // rocketEngineAudioPlayer?.stop()
 
         // Re-enumerate links with restored scale
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
