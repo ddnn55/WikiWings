@@ -89,8 +89,8 @@ class ViewController: UIViewController, WKNavigationDelegate {
     private var restartHostingController: UIHostingController<RestartScreenView>!
     private var startHostingController: UIHostingController<StartScreenView>!
     private var gameStarted = false
-    // private let originalURL = "https://en.wikipedia.org/wiki/Main_Page"
-    private let originalURL = "https://en.wikipedia.org/wiki/History_of_philosophy"
+    private let originalURL = "https://en.wikipedia.org/wiki/Main_Page"
+    // private let originalURL = "https://en.wikipedia.org/wiki/History_of_philosophy"
     private var hopCount = 0
     private var linkHistory: [String] = []
     private var visitedURLs: Set<String> = []
