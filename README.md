@@ -116,7 +116,8 @@ The game starts at Wikipedia's Main Page by default. You can modify `originalURL
 
 ## Credits
 
-Created by David Stolarsky
+Created by David Stolarsky at [WIKIGAMEJAM 2025](https://wikigamejam.org) @ HEX HOUSE NYC
+Sound effects by [@aotustudios](https://instagram.com/aotustudios)
 
 ## License
 
