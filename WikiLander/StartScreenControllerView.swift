@@ -1,5 +1,5 @@
 //
-//  StartScreenView.swift
+//  StartScreenControllerView.swift
 //  WikiLander
 //
 //  Created by David Stolarsky on 10/4/25.
@@ -7,14 +7,11 @@
 
 import SwiftUI
 
-struct StartScreenView: View {
+struct StartScreenControllerView: View {
     let onStart: () -> Void
 
     var body: some View {
         VStack(spacing: 20) {
-            Text("WikiLander")
-                .font(.system(size: 64, weight: .bold))
-                .foregroundColor(.white)
 
             Button(action: onStart) {
                 Text("START")

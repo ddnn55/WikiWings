@@ -26,6 +26,7 @@ class ExternalDisplayViewController: UIViewController {
     weak var gameVerticalLabel: UILabel?
     weak var gameOverHostingView: UIView?
     weak var restartHostingView: UIView?
+    weak var startSceneHostingView: UIView?
 
     private var hasLaidOut = false
 
@@ -46,6 +47,7 @@ class ExternalDisplayViewController: UIViewController {
         gameDebugView?.frame = view.bounds
         gameOverHostingView?.frame = view.bounds
         restartHostingView?.frame = view.bounds
+        startSceneHostingView?.frame = view.bounds
     }
 
     override var prefersStatusBarHidden: Bool {
@@ -87,7 +89,8 @@ class ViewController: UIViewController, WKNavigationDelegate {
     private var isGameOver = false
     private var gameOverHostingController: UIHostingController<GameOverScreenView>!
     private var restartHostingController: UIHostingController<RestartScreenView>!
-    private var startHostingController: UIHostingController<StartScreenView>!
+    private var startHostingController: UIHostingController<StartScreenControllerView>!
+    private var startSceneHostingController: UIHostingController<StartScreenSceneView>!
     private var gameStarted = false
     private let originalURL = "https://en.wikipedia.org/wiki/Main_Page"
     // private let originalURL = "https://en.wikipedia.org/wiki/History_of_philosophy"
@@ -224,7 +227,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
         restartHostingController.didMove(toParent: self)
 
         // Create welcome screen (add after touchOverlay)
-        let startView = StartScreenView(onStart: { [weak self] in
+        let startView = StartScreenControllerView(onStart: { [weak self] in
             self?.startGame()
         })
         startHostingController = UIHostingController(rootView: startView)
@@ -235,6 +238,15 @@ class ViewController: UIViewController, WKNavigationDelegate {
 
         // Bring welcome screen to front so it's above touchOverlay
         view.bringSubviewToFront(startHostingController.view)
+
+        // Create start screen scene view for external display
+        let startSceneView = StartScreenSceneView()
+        startSceneHostingController = UIHostingController(rootView: startSceneView)
+        startSceneHostingController.view.backgroundColor = .clear
+        addChild(startSceneHostingController)
+        view.addSubview(startSceneHostingController.view)
+        startSceneHostingController.didMove(toParent: self)
+        startSceneHostingController.view.isHidden = true // Initially hidden, will show on external display
 
         // Create philosophy image view (initially hidden)
         philosophyImageView = UIImageView(frame: view.bounds)
@@ -346,9 +358,10 @@ class ViewController: UIViewController, WKNavigationDelegate {
         restartHostingController.view.frame = view.bounds
         startHostingController.view.frame = view.bounds
 
-        // Only layout game over UI if it's on the main screen
+        // Only layout game over UI and start scene UI if it's on the main screen
         guard externalWindow == nil else { return }
         gameOverHostingController.view.frame = view.bounds
+        startSceneHostingController.view.frame = view.bounds
     }
 
     private func enumerateLinks() {
@@ -791,6 +804,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
     @objc private func startGame() {
         // Hide welcome screen
         startHostingController.view.isHidden = true
+        startSceneHostingController.view.isHidden = true
 
         // Hide philosophy image if visible
         philosophyImageView?.isHidden = true
@@ -885,6 +899,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
         externalVC.gameVerticalLabel = verticalLabel
         externalVC.gameOverHostingView = gameOverHostingController.view
         externalVC.restartHostingView = nil // Restart button stays on phone
+        externalVC.startSceneHostingView = startSceneHostingController.view
 
         // Move visual game UI to external display (keep touchOverlay, restart button, and start screen on phone)
         webView.removeFromSuperview()
@@ -899,6 +914,11 @@ class ViewController: UIViewController, WKNavigationDelegate {
         gameOverHostingController.view.removeFromSuperview()
         gameOverHostingController.removeFromParent()
 
+        // Properly transfer start scene controller to external display
+        startSceneHostingController.willMove(toParent: nil)
+        startSceneHostingController.view.removeFromSuperview()
+        startSceneHostingController.removeFromParent()
+
         externalVC.view.addSubview(webView)
         externalVC.view.addSubview(debugView)
         externalVC.view.addSubview(horizontalLine)
@@ -909,6 +929,11 @@ class ViewController: UIViewController, WKNavigationDelegate {
         externalVC.addChild(gameOverHostingController)
         externalVC.view.addSubview(gameOverHostingController.view)
         gameOverHostingController.didMove(toParent: externalVC)
+
+        externalVC.addChild(startSceneHostingController)
+        externalVC.view.addSubview(startSceneHostingController.view)
+        startSceneHostingController.didMove(toParent: externalVC)
+        startSceneHostingController.view.isHidden = startHostingController.view.isHidden // Match visibility of controller start screen
 
         // Trigger layout
         externalVC.view.setNeedsLayout()
@@ -983,6 +1008,11 @@ class ViewController: UIViewController, WKNavigationDelegate {
         gameOverHostingController.view.removeFromSuperview()
         gameOverHostingController.removeFromParent()
 
+        // Properly transfer start scene controller back to main view controller
+        startSceneHostingController.willMove(toParent: nil)
+        startSceneHostingController.view.removeFromSuperview()
+        startSceneHostingController.removeFromParent()
+
         view.addSubview(webView)
         view.addSubview(touchOverlay)
         view.addSubview(debugView)
@@ -994,6 +1024,10 @@ class ViewController: UIViewController, WKNavigationDelegate {
         addChild(gameOverHostingController)
         view.addSubview(gameOverHostingController.view)
         gameOverHostingController.didMove(toParent: self)
+
+        addChild(startSceneHostingController)
+        view.addSubview(startSceneHostingController.view)
+        startSceneHostingController.didMove(toParent: self)
 
         // Update frames for main display
         webView.frame = view.bounds
