@@ -24,7 +24,7 @@ struct GameOverScreenView: View {
                     .foregroundColor(.white)
 
                 Text(linkHistory.joined(separator: " ➡️ "))
-                    .font(.system(size: isExternalDisplay ? 70 : 14))
+                    .font(.system(size: isExternalDisplay ? 40 : 14))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
             }
@@ -32,4 +32,9 @@ struct GameOverScreenView: View {
             .background(Color.black.opacity(0.7))
         }
     }
+}
+
+#Preview(traits: .fixedLayout(width: 1920, height: 1080)) {
+    GameOverScreenView(hopCount: 30, linkHistory: ["History", "Philosophy", "Science", "Nature", "Universe", "Biology", "Chemistry", "Physics", "Mathematics", "Geometry", "Algebra", "Calculus", "Statistics", "Logic", "Epistemology", "Metaphysics", "Ethics", "Politics", "Sociology", "Psychology", "Cognition", "Perception", "Reality", "Truth", "Knowledge", "Wisdom", "Understanding", "Reason", "Rationality", "Thought"], isExternalDisplay: true)
+        .background(Color.black)
 }
