@@ -8,18 +8,50 @@
 import SwiftUI
 
 struct StartScreenSceneView: View {
-    var body: some View {
-        ZStack {
-            RocketAnimationView()
+    var isGameOver: Bool = false
+    var hopCount: Int = 0
+    var linkHistory: [String] = []
+    var isExternalDisplay: Bool = false
 
-            VStack {
-                Text("WikiWings")
-                    .font(.system(size: 200, weight: .bold))
-                    .foregroundColor(.white)
+    var body: some View {
+        GeometryReader { geo in
+            ZStack {
+                RocketAnimationView()
+
+                if isGameOver {
+                    VStack(spacing: 20) {
+                        Text("WikiWings")
+                            .font(.system(size: 200, weight: .bold))
+                            .foregroundColor(.white)
+
+                        Text("GAME OVER")
+                            .font(.system(size: 200, weight: .bold))
+                            .foregroundColor(.red)
+
+                        VStack(spacing: 10) {
+                            Text("Survived \(hopCount) hop\(hopCount == 1 ? "" : "s")")
+                                .font(.system(size: isExternalDisplay ? 140 : 14))
+                                .foregroundColor(.white)
+
+                            Text(linkHistory.joined(separator: " ➡️ "))
+                                .font(.system(size: geo.size.width * 0.02))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding(20)
+                        .background(Color.black.opacity(0.7))
+                    }
+                } else {
+                    VStack {
+                        Text("WikiWings")
+                            .font(.system(size: 200, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.black.opacity(0.5))
         }
-        .background(Color.black.opacity(0.5))
     }
 }
 struct Rocket: Identifiable {
